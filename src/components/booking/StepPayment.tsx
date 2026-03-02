@@ -1,0 +1,188 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { useBooking } from "@/context/BookingContext";
+import { BOOKING_CONFIG } from "@/config/booking";
+import { sendBookingWebhook } from "@/utils/webhook";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
+
+export function StepPayment() {
+  const {
+    state, subtotal, total, payableAmount,
+    setPaymentId, setCompleted,
+  } = useBooking();
+
+  const [loading, setLoading] = useState(false);
+
+  const handleDemoPayment = async () => {
+    setLoading(true);
+    // Simulate payment processing
+    await new Promise((r) => setTimeout(r, 1500));
+    const fakeId = `demo_${Date.now()}`;
+    setPaymentId(fakeId);
+    await sendBookingWebhook(
+      { ...state, paymentId: fakeId },
+      subtotal,
+      total,
+      payableAmount,
+    );
+    setCompleted(true);
+    setLoading(false);
+  };
+
+  // Success screen
+  if (state.completed) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        className="text-center py-12"
+      >
+        <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="h-8 w-8 text-success" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Booking Confirmed!</h2>
+        <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">
+          Thank you, {state.customer.name}. We'll see you on{" "}
+          {state.selectedDate ? format(state.selectedDate, "MMMM d, yyyy") : "your scheduled date"}{" "}
+          during the {state.selectedTimeWindow?.label} window.
+        </p>
+        <div className="bg-card border border-border rounded-xl p-4 max-w-xs mx-auto text-left text-sm space-y-2">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Service</span>
+            <span className="font-medium text-foreground capitalize">
+              {state.serviceType?.replace("-", " ")}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Items</span>
+            <span className="font-medium text-foreground">{state.cart.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              {BOOKING_CONFIG.depositMode ? "Deposit Paid" : "Total Paid"}
+            </span>
+            <span className="font-bold text-foreground">
+              {BOOKING_CONFIG.currencySymbol}{payableAmount}
+            </span>
+          </div>
+          {state.paymentId && (
+            <div className="pt-2 border-t border-border">
+              <span className="text-xs text-muted-foreground">Ref: {state.paymentId}</span>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.2 }}
+    >
+      <h2 className="text-xl font-bold text-foreground mb-1">Review & Pay</h2>
+      <p className="text-sm text-muted-foreground mb-6">
+        {BOOKING_CONFIG.depositMode
+          ? `A ${BOOKING_CONFIG.depositPercentage}% deposit is required to confirm your booking.`
+          : "Full payment is required to confirm your booking."}
+      </p>
+
+      {/* Order review */}
+      <div className="bg-card border border-border rounded-xl p-4 mb-6 space-y-3 text-sm">
+        <div className="flex justify-between text-muted-foreground">
+          <span>Service</span>
+          <span className="font-medium text-foreground capitalize">
+            {state.serviceType?.replace("-", " ")}
+          </span>
+        </div>
+        <div className="flex justify-between text-muted-foreground">
+          <span>Date</span>
+          <span className="font-medium text-foreground">
+            {state.selectedDate ? format(state.selectedDate, "MMM d, yyyy") : "—"}
+          </span>
+        </div>
+        <div className="flex justify-between text-muted-foreground">
+          <span>Time</span>
+          <span className="font-medium text-foreground">{state.selectedTimeWindow?.label ?? "—"}</span>
+        </div>
+        <div className="border-t border-border pt-3">
+          {state.cart.map((c) => (
+            <div key={c.item.id} className="flex justify-between py-1">
+              <span className="text-foreground">
+                {c.item.name} × {c.quantity}
+              </span>
+              <span className="font-medium text-foreground">
+                {BOOKING_CONFIG.currencySymbol}{c.item.price * c.quantity}
+              </span>
+            </div>
+          ))}
+          {state.customItems.map((ci, i) => (
+            <div key={i} className="flex justify-between py-1">
+              <span className="text-foreground">{ci.description}</span>
+              <span className="text-muted-foreground text-xs">TBD</span>
+            </div>
+          ))}
+        </div>
+        {subtotal < BOOKING_CONFIG.minimumCharge && state.cart.length > 0 && (
+          <div className="text-xs text-accent flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Minimum charge of {BOOKING_CONFIG.currencySymbol}{BOOKING_CONFIG.minimumCharge} applied
+          </div>
+        )}
+        <div className="border-t border-border pt-3 flex justify-between font-bold text-foreground">
+          <span>{BOOKING_CONFIG.depositMode ? "Deposit Due" : "Total"}</span>
+          <span>{BOOKING_CONFIG.currencySymbol}{payableAmount}</span>
+        </div>
+      </div>
+
+      {/* Payment area */}
+      {!BOOKING_CONFIG.stripePublishableKey ? (
+        <div className="space-y-4">
+          <div className="bg-muted rounded-xl p-4 text-center text-sm text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">Demo Mode</p>
+            <p>Stripe is not configured. Click below to simulate a payment.</p>
+          </div>
+          <Button
+            onClick={handleDemoPayment}
+            disabled={loading}
+            className="w-full h-12 text-base font-semibold"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
+            )}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-card border border-border rounded-xl p-6 min-h-[120px] flex items-center justify-center text-sm text-muted-foreground">
+            Stripe Payment Element will render here
+          </div>
+          <Button
+            onClick={handleDemoPayment}
+            disabled={loading}
+            className="w-full h-12 text-base font-semibold"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
+            )}
+          </Button>
+        </div>
+      )}
+    </motion.div>
+  );
+}

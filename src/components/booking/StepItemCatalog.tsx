@@ -94,48 +94,90 @@ export function StepItemCatalog() {
             <div
               key={item.id}
               className={cn(
-                "border rounded-xl p-3 transition-all bg-card",
+                "relative border rounded-xl transition-all overflow-hidden",
+                item.imageUrl ? "min-h-[140px] flex flex-col justify-end" : "p-3 bg-card",
                 qty > 0 ? "border-primary shadow-sm" : "border-border",
               )}
             >
-              <div className="flex items-center justify-center h-10 mb-2">
-                {item.imageUrl ? (
-                  <img src={item.imageUrl} alt={item.name} className="h-9 w-9 object-contain rounded" />
-                ) : (
-                  <Icon className="h-6 w-6 text-muted-foreground" />
-                )}
-              </div>
-              <p className="text-xs font-medium text-foreground truncate text-center">{item.name}</p>
-              <p className="text-xs font-bold text-primary text-center mt-0.5">
-                {BOOKING_CONFIG.currencySymbol}{item.price}
-              </p>
-
-              <div className="flex items-center justify-center gap-1.5 mt-2">
-                {qty > 0 ? (
-                  <>
-                    <button
-                      onClick={() => updateQuantity(item.id, qty - 1)}
-                      className="h-7 w-7 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="text-sm font-semibold w-6 text-center text-foreground">{qty}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, qty + 1)}
-                      className="h-7 w-7 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => addToCart(item)}
-                    className="text-xs px-4 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
-                  >
-                    Add
-                  </button>
-                )}
-              </div>
+              {item.imageUrl ? (
+                <>
+                  {/* Full background image */}
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${item.imageUrl})` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
+                  {/* Content over image */}
+                  <div className="relative z-10 p-3 pt-8">
+                    <p className="text-xs font-medium text-white truncate text-center">{item.name}</p>
+                    <p className="text-xs font-bold text-white/90 text-center mt-0.5">
+                      {BOOKING_CONFIG.currencySymbol}{item.price}
+                    </p>
+                    <div className="flex items-center justify-center gap-1.5 mt-2">
+                      {qty > 0 ? (
+                        <>
+                          <button
+                            onClick={() => updateQuantity(item.id, qty - 1)}
+                            className="h-7 w-7 rounded-full border border-white/30 bg-black/30 flex items-center justify-center hover:bg-black/50 transition-colors"
+                          >
+                            <Minus className="h-3 w-3 text-white" />
+                          </button>
+                          <span className="text-sm font-semibold w-6 text-center text-white">{qty}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, qty + 1)}
+                            className="h-7 w-7 rounded-full border border-white/30 bg-black/30 flex items-center justify-center hover:bg-black/50 transition-colors"
+                          >
+                            <Plus className="h-3 w-3 text-white" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => addToCart(item)}
+                          className="text-xs px-4 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                        >
+                          Add
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-center h-10 mb-2">
+                    <Icon className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs font-medium text-foreground truncate text-center">{item.name}</p>
+                  <p className="text-xs font-bold text-primary text-center mt-0.5">
+                    {BOOKING_CONFIG.currencySymbol}{item.price}
+                  </p>
+                  <div className="flex items-center justify-center gap-1.5 mt-2">
+                    {qty > 0 ? (
+                      <>
+                        <button
+                          onClick={() => updateQuantity(item.id, qty - 1)}
+                          className="h-7 w-7 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="text-sm font-semibold w-6 text-center text-foreground">{qty}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, qty + 1)}
+                          className="h-7 w-7 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => addToCart(item)}
+                        className="text-xs px-4 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                      >
+                        Add
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           );
         })}

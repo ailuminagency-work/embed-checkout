@@ -3,10 +3,12 @@ import { useBooking } from "@/context/BookingContext";
 import { ServiceType } from "@/types/booking";
 import { cn } from "@/lib/utils";
 import { Truck, Heart } from "lucide-react";
+import junkRemovalBg from "@/assets/junk-removal-bg.jpg";
+import donationPickupBg from "@/assets/donation-pickup-bg.jpg";
 
-const options: { type: ServiceType; title: string; desc: string; Icon: typeof Truck }[] = [
-  { type: "junk-removal", title: "Junk Removal", desc: "We haul away your unwanted items quickly and responsibly.", Icon: Truck },
-  { type: "donation-pickup", title: "Donation Pickup", desc: "We pick up items and deliver them to local charities.", Icon: Heart },
+const options: { type: ServiceType; title: string; desc: string; Icon: typeof Truck; bg: string }[] = [
+  { type: "junk-removal", title: "Junk Removal", desc: "We haul away your unwanted items quickly and responsibly.", Icon: Truck, bg: junkRemovalBg },
+  { type: "donation-pickup", title: "Donation Pickup", desc: "We pick up items and deliver them to local charities.", Icon: Heart, bg: donationPickupBg },
 ];
 
 export function StepServiceType() {
@@ -23,7 +25,7 @@ export function StepServiceType() {
       <p className="text-sm text-muted-foreground mb-6">Choose the service that fits your needs.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {options.map(({ type, title, desc, Icon }) => (
+        {options.map(({ type, title, desc, Icon, bg }) => (
           <button
             key={type}
             onClick={() => {
@@ -31,17 +33,28 @@ export function StepServiceType() {
               nextStep();
             }}
             className={cn(
-              "p-6 rounded-xl border-2 text-left transition-all hover:shadow-md",
+              "relative rounded-xl border-2 text-left transition-all hover:shadow-lg overflow-hidden min-h-[200px] flex flex-col justify-end",
               state.serviceType === type
-                ? "border-primary bg-primary/5 shadow-sm"
-                : "border-border hover:border-primary/40 bg-card",
+                ? "border-primary shadow-sm ring-2 ring-primary/30"
+                : "border-border hover:border-primary/40",
             )}
           >
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-              <Icon className="h-6 w-6 text-primary" />
+            {/* Background image */}
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${bg})` }}
+            />
+            {/* Dark overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
+
+            {/* Content */}
+            <div className="relative z-10 p-5">
+              <div className="h-10 w-10 rounded-lg bg-primary/90 flex items-center justify-center mb-3">
+                <Icon className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <h3 className="font-semibold text-white text-lg">{title}</h3>
+              <p className="text-sm text-white/80 mt-1 leading-relaxed">{desc}</p>
             </div>
-            <h3 className="font-semibold text-foreground text-lg">{title}</h3>
-            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{desc}</p>
           </button>
         ))}
       </div>

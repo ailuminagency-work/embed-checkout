@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { BookingState, ServiceType, CatalogItem, TimeWindow, CustomerDetails } from "@/types/booking";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { defaultCatalog } from "@/data/defaultCatalog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BookingContextValue {
   state: BookingState;
@@ -57,14 +58,33 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [catalogLoading, setCatalogLoading] = useState(false);
 
   useEffect(() => {
-    if (BOOKING_CONFIG.catalogEndpoint) {
-      setCatalogLoading(true);
-      fetch(BOOKING_CONFIG.catalogEndpoint)
-        .then((r) => r.json())
-        .then((data) => setCatalog(data))
-        .catch(() => setCatalog(defaultCatalog))
-        .finally(() => setCatalogLoading(false));
-    }
+    setCatalogLoading(true);
+    
+    const fetchCatalog = async () => {
+      try {
+        // If a custom catalog endpoint is configured, use that
+        if (BOOKING_CONFIG.catalogEndpoint) {
+          const r = await fetch(BOOKING_CONFIG.catalogEndpoint);
+          const data = await r.json();
+          setCatalog(data);
+        } else {
+          // Use the edge function by default
+          const { data, error } = await supabase.functions.invoke("get-catalog");
+          if (error) throw error;
+          if (Array.isArray(data)) {
+            setCatalog(data);
+          } else {
+            setCatalog(defaultCatalog);
+          }
+        }
+      } catch {
+        setCatalog(defaultCatalog);
+      } finally {
+        setCatalogLoading(false);
+      }
+    };
+
+    fetchCatalog();
   }, []);
 
   const categories = useMemo(() => [...new Set(catalog.map((i) => i.category))], [catalog]);

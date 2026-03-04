@@ -17,18 +17,18 @@ function WidgetInner() {
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-4 py-3 border-b border-border flex items-center gap-3 bg-card">
-        {BOOKING_CONFIG.logoUrl ? (
-          <img src={BOOKING_CONFIG.logoUrl} alt={BOOKING_CONFIG.companyName} className="h-7" />
-        ) : (
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Truck className="h-4 w-4 text-primary-foreground" />
-          </div>
-        )}
-        <span className="font-semibold text-foreground text-sm tracking-tight">
-          {BOOKING_CONFIG.companyName}
-        </span>
-      </div>
+      
+
+
+
+
+
+
+
+
+
+
+      
 
       {/* Step indicator */}
       {!state.completed && <StepIndicator />}
@@ -49,23 +49,23 @@ function WidgetInner() {
         </div>
 
         {/* Right: Sticky summary (desktop only) */}
-        {!state.completed && (
-          <div className="hidden md:flex w-[340px] border-l border-border flex-col bg-card">
+        {!state.completed &&
+        <div className="hidden md:flex w-[340px] border-l border-border flex-col bg-card">
             <OrderSummary />
           </div>
-        )}
+        }
       </div>
 
       {/* Mobile bottom bar */}
       {!state.completed && <MobileBottomBar />}
-    </div>
-  );
+    </div>);
+
 }
 
 export default function BookingWidget() {
   return (
     <BookingProvider>
       <WidgetInner />
-    </BookingProvider>
-  );
+    </BookingProvider>);
+
 }

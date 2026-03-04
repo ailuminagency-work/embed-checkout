@@ -72,7 +72,13 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const { data, error } = await supabase.functions.invoke("get-catalog");
           if (error) throw error;
           if (Array.isArray(data)) {
-            setCatalog(data);
+            // Merge local default images for items that lack an image_url
+            const defaultImageMap = new Map(defaultCatalog.map(d => [d.id, d.imageUrl]));
+            const merged = data.map((item: CatalogItem) => ({
+              ...item,
+              imageUrl: item.imageUrl || defaultImageMap.get(item.id) || undefined,
+            }));
+            setCatalog(merged);
           } else {
             setCatalog(defaultCatalog);
           }

@@ -40,7 +40,7 @@ export const useBooking = () => {
 };
 
 const emptyCustomer: CustomerDetails = {
-  name: "", phone: "", email: "", address: "", zip: "", gateCode: "", notes: "", photos: [],
+  name: "", phone: "", email: "", address: "", zip: "", gateCode: "", notes: "", photos: [], propertyType: null,
 };
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -163,7 +163,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       case 2: return !!state.selectedDate && !!state.selectedTimeWindow;
       case 3: {
         const c = state.customer;
-        const hasRequired = !!(c.name && c.phone && c.email && c.address && c.zip);
+        const hasRequired = !!(c.name && c.phone && c.email && c.address && c.zip && c.propertyType);
         if (!hasRequired) return false;
         if (BOOKING_CONFIG.serviceAreaZips.length > 0 && !BOOKING_CONFIG.serviceAreaZips.includes(c.zip)) return false;
         return true;

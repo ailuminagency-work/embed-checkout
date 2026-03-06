@@ -67,6 +67,6 @@ export default function BookingWidget() {
   return (
     <BookingProvider>
       <WidgetInner />
-    </BookingProvider>);
-
+    </BookingProvider>
+  );
 }

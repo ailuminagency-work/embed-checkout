@@ -9,7 +9,7 @@ const TIME_WINDOWS: TimeWindow[] = [
   { id: "early-morning", label: "8:00 AM – 12:00 AM" },
   { id: "morning", label: "12:00 AM – 4:00 PM" },
   { id: "afternoon", label: "4:00 PM – 8:00 PM" },
-  { id: "late-afternoon", label: "3:00 PM – 6:00 PM" },
+  
 ];
 
 export function StepSchedule() {

@@ -71,7 +71,17 @@ export function StepCustomerDetails() {
             id="address"
             value={c.address}
             onChange={(e) => updateCustomer({ address: e.target.value })}
-            placeholder="123 Main St, Apt 4B"
+            placeholder="123 Main St"
+            className="mt-1 bg-card"
+          />
+        </div>
+        <div>
+          <Label htmlFor="address2" className="text-xs font-medium text-foreground">Address Line 2</Label>
+          <Input
+            id="address2"
+            value={c.address2 || ""}
+            onChange={(e) => updateCustomer({ address2: e.target.value })}
+            placeholder="Apt, Suite, Unit, Floor (optional)"
             className="mt-1 bg-card"
           />
         </div>

@@ -242,8 +242,13 @@ export function StepItemCatalog() {
 
       {/* Photo upload */}
       <div className="mt-6 border-t border-border pt-4">
-        <Label className="text-xs font-medium text-foreground">Photos *</Label>
-        <p className="text-xs text-muted-foreground mb-2">Upload photos of each item accurately.</p>
+        <div className="flex items-center gap-2 mb-1">
+          <Label className="text-xs font-medium text-foreground">Photos *</Label>
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            {BOOKING_CONFIG.photoPromoPercent}% OFF
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-2">Upload photos of each item accurately &amp; get {BOOKING_CONFIG.photoPromoPercent}% off!</p>
         <input
           ref={fileRef}
           type="file"

@@ -36,6 +36,9 @@ export const BOOKING_CONFIG = {
    *  Leave empty to use the built-in default catalog. */
   catalogEndpoint: "",
 
+  /** Promo discount percentage applied when customer uploads photos (e.g. 5 = 5%) */
+  photoPromoPercent: 5,
+
   /** Stripe publishable key — required for live payments.
    *  Leave empty for demo / simulation mode. */
   stripePublishableKey: "",

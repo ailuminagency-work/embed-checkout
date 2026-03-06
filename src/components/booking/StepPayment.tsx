@@ -4,6 +4,8 @@ import { useBooking } from "@/context/BookingContext";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { sendBookingWebhook } from "@/utils/webhook";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 
@@ -14,7 +16,7 @@ export function StepPayment() {
   } = useBooking();
 
   const [loading, setLoading] = useState(false);
-
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const handleDemoPayment = async () => {
     setLoading(true);
     // Simulate payment processing
@@ -140,6 +142,23 @@ export function StepPayment() {
         </div>
       </div>
 
+      {/* Terms agreement */}
+      <div className="flex items-start gap-3 mb-6">
+        <Checkbox
+          id="terms"
+          checked={agreedToTerms}
+          onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+          className="mt-0.5"
+        />
+        <Label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+          I agree to the{" "}
+          <span className="underline text-foreground">Terms of Service</span>{" "}
+          and{" "}
+          <span className="underline text-foreground">Cancellation Policy</span>.
+          I understand that pricing may be adjusted on-site based on actual items.
+        </Label>
+      </div>
+
       {/* Payment area */}
       {!BOOKING_CONFIG.stripePublishableKey ? (
         <div className="space-y-4">
@@ -149,7 +168,7 @@ export function StepPayment() {
           </div>
           <Button
             onClick={handleDemoPayment}
-            disabled={loading}
+            disabled={loading || !agreedToTerms}
             className="w-full h-12 text-base font-semibold"
           >
             {loading ? (
@@ -169,7 +188,7 @@ export function StepPayment() {
           </div>
           <Button
             onClick={handleDemoPayment}
-            disabled={loading}
+            disabled={loading || !agreedToTerms}
             className="w-full h-12 text-base font-semibold"
           >
             {loading ? (

@@ -6,7 +6,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Clock } from "lucide-react";
 
 const TIME_WINDOWS: TimeWindow[] = [
-  { id: "early-morning", label: "7:00 AM – 9:00 AM" },
+  { id: "early-morning", label: "8:00 AM – 12:00 AM" },
   { id: "morning", label: "9:00 AM – 12:00 PM" },
   { id: "afternoon", label: "12:00 PM – 3:00 PM" },
   { id: "late-afternoon", label: "3:00 PM – 6:00 PM" },

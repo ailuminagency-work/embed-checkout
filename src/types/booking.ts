@@ -18,6 +18,8 @@ export interface TimeWindow {
   label: string;
 }
 
+export type PropertyType = "house" | "building" | "office" | "apartment";
+
 export interface CustomerDetails {
   name: string;
   phone: string;
@@ -27,6 +29,7 @@ export interface CustomerDetails {
   gateCode: string;
   notes: string;
   photos: File[];
+  propertyType: PropertyType | null;
 }
 
 export interface BookingState {

@@ -4,7 +4,7 @@ import { BOOKING_CONFIG } from "@/config/booking";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Home, Building2, Briefcase, Building } from "lucide-react";
 
 export function StepCustomerDetails() {
   const { state, updateCustomer } = useBooking();
@@ -64,7 +64,7 @@ export function StepCustomerDetails() {
           </div>
         </div>
 
-        {/* Address + ZIP */}
+        {/* Address */}
         <div>
           <Label htmlFor="address" className="text-xs font-medium text-foreground">Pickup Address *</Label>
           <Input
@@ -74,6 +74,33 @@ export function StepCustomerDetails() {
             placeholder="123 Main St, Apt 4B"
             className="mt-1 bg-card"
           />
+        </div>
+
+        {/* Property Type */}
+        <div>
+          <Label className="text-xs font-medium text-foreground">Property Type *</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+            {([
+              { value: "house", label: "House", icon: Home },
+              { value: "building", label: "Building", icon: Building2 },
+              { value: "office", label: "Office", icon: Briefcase },
+              { value: "apartment", label: "Apartment", icon: Building },
+            ] as const).map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => updateCustomer({ propertyType: value })}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition-colors ${
+                  c.propertyType === value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

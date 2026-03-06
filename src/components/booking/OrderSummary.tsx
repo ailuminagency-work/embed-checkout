@@ -2,11 +2,11 @@ import { useBooking } from "@/context/BookingContext";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ShoppingCart, AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react";
+import { ShoppingCart, AlertTriangle, ArrowRight, ArrowLeft, Tag } from "lucide-react";
 
 export function OrderSummary() {
   const {
-    state, subtotal, total, payableAmount,
+    state, subtotal, photoPromoDiscount, total, payableAmount,
     canProceed, nextStep, prevStep,
   } = useBooking();
 
@@ -95,6 +95,15 @@ export function OrderSummary() {
               <span>Subtotal</span>
               <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{subtotal}</span>
             </div>
+            {photoPromoDiscount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span className="flex items-center gap-1">
+                  <Tag className="h-3 w-3" />
+                  Photo promo ({BOOKING_CONFIG.photoPromoPercent}% off)
+                </span>
+                <span className="tabular-nums">-{BOOKING_CONFIG.currencySymbol}{photoPromoDiscount}</span>
+              </div>
+            )}
             {subtotal < BOOKING_CONFIG.minimumCharge && (
               <div className="flex items-center gap-1 text-xs text-accent">
                 <AlertTriangle className="h-3 w-3" />

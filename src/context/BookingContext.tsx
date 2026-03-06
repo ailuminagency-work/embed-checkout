@@ -24,6 +24,7 @@ interface BookingContextValue {
   setPaymentId: (id: string) => void;
   setCompleted: (v: boolean) => void;
   subtotal: number;
+  photoPromoDiscount: number;
   total: number;
   payableAmount: number;
   canProceed: boolean;
@@ -138,7 +139,15 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const setCompleted = useCallback((completed: boolean) => setState((s) => ({ ...s, completed })), []);
 
   const subtotal = useMemo(() => state.cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0), [state.cart]);
-  const total = useMemo(() => Math.max(subtotal, state.cart.length > 0 ? BOOKING_CONFIG.minimumCharge : 0), [subtotal, state.cart.length]);
+  const hasPhotos = state.customer.photos.length > 0;
+  const photoPromoDiscount = useMemo(
+    () => hasPhotos && BOOKING_CONFIG.photoPromoPercent > 0
+      ? Math.round((subtotal * BOOKING_CONFIG.photoPromoPercent) / 100)
+      : 0,
+    [subtotal, hasPhotos],
+  );
+  const discountedSubtotal = subtotal - photoPromoDiscount;
+  const total = useMemo(() => Math.max(discountedSubtotal, state.cart.length > 0 ? BOOKING_CONFIG.minimumCharge : 0), [discountedSubtotal, state.cart.length]);
   const payableAmount = useMemo(
     () => (BOOKING_CONFIG.depositMode ? Math.ceil((total * BOOKING_CONFIG.depositPercentage) / 100) : total),
     [total],
@@ -168,7 +177,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addCustomItem, removeCustomItem,
     setSelectedDate, setSelectedTimeWindow,
     updateCustomer, setPaymentId, setCompleted,
-    subtotal, total, payableAmount, canProceed,
+    subtotal, photoPromoDiscount, total, payableAmount, canProceed,
   };
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

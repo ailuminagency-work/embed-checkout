@@ -152,9 +152,9 @@ export function StepPayment() {
         />
         <Label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
           I agree to the{" "}
-          <span className="underline text-foreground">Terms of Service</span>{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">Terms of Service</a>{" "}
           and{" "}
-          <span className="underline text-foreground">Cancellation Policy</span>.
+          <a href="/cancellation-policy" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">Cancellation Policy</a>.
           I understand that pricing may be adjusted on-site based on actual items.
         </Label>
       </div>

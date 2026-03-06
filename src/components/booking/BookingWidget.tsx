@@ -12,7 +12,8 @@ import { MobileBottomBar } from "./MobileBottomBar";
 import { Truck } from "lucide-react";
 
 function WidgetInner() {
-  const { state } = useBooking();
+  const booking = useBooking();
+  const { state } = booking;
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden">

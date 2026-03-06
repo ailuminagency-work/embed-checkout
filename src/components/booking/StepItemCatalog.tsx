@@ -1,12 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { useBooking } from "@/context/BookingContext";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
-  Search, Plus, Minus, X,
+  Search, Plus, Minus, X, Camera,
   Sofa, Refrigerator, Monitor, TreePine, Package,
 } from "lucide-react";
 
@@ -22,7 +23,10 @@ export function StepItemCatalog() {
   const {
     catalog, categories, catalogLoading, state,
     addToCart, updateQuantity, addCustomItem, removeCustomItem,
+    updateCustomer,
   } = useBooking();
+  const c = state.customer;
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
@@ -234,6 +238,48 @@ export function StepItemCatalog() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Photo upload */}
+      <div className="mt-6 border-t border-border pt-4">
+        <Label className="text-xs font-medium text-foreground">Photos (optional)</Label>
+        <p className="text-xs text-muted-foreground mb-2">Help us estimate more accurately.</p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) {
+              updateCustomer({ photos: [...c.photos, ...Array.from(e.target.files)] });
+            }
+          }}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors bg-card"
+        >
+          <Camera className="h-4 w-4" />
+          Upload photos
+        </button>
+        {c.photos.length > 0 && (
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {c.photos.map((f, i) => (
+              <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden border border-border">
+                <img src={URL.createObjectURL(f)} alt="" className="h-full w-full object-cover" />
+                <button
+                  onClick={() =>
+                    updateCustomer({ photos: c.photos.filter((_, idx) => idx !== i) })
+                  }
+                  className="absolute top-0 right-0 bg-foreground/60 text-background rounded-bl text-xs px-1"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   );

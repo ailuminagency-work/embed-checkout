@@ -147,7 +147,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const canProceed = useMemo(() => {
     switch (state.step) {
       case 0: return !!state.serviceType;
-      case 1: return state.cart.length > 0;
+      case 1: return state.cart.length > 0 && state.customer.photos.length > 0;
       case 2: return !!state.selectedDate && !!state.selectedTimeWindow;
       case 3: {
         const c = state.customer;

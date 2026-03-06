@@ -39,4 +39,5 @@ export interface BookingState {
   customer: CustomerDetails;
   paymentId: string | null;
   completed: boolean;
+  skipPhotos: boolean;
 }

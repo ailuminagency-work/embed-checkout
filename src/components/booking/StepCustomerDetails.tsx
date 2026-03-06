@@ -4,13 +4,11 @@ import { BOOKING_CONFIG } from "@/config/booking";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Camera, AlertCircle } from "lucide-react";
-import { useRef } from "react";
+import { AlertCircle } from "lucide-react";
 
 export function StepCustomerDetails() {
   const { state, updateCustomer } = useBooking();
   const c = state.customer;
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const zipInvalid =
     BOOKING_CONFIG.serviceAreaZips.length > 0 &&
@@ -121,47 +119,6 @@ export function StepCustomerDetails() {
           />
         </div>
 
-        {/* Photo upload */}
-        <div>
-          <Label className="text-xs font-medium text-foreground">Photos (optional)</Label>
-          <p className="text-xs text-muted-foreground mb-2">Help us estimate more accurately.</p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) {
-                updateCustomer({ photos: [...c.photos, ...Array.from(e.target.files)] });
-              }
-            }}
-          />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors bg-card"
-          >
-            <Camera className="h-4 w-4" />
-            Upload photos
-          </button>
-          {c.photos.length > 0 && (
-            <div className="flex gap-2 mt-3 flex-wrap">
-              {c.photos.map((f, i) => (
-                <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden border border-border">
-                  <img src={URL.createObjectURL(f)} alt="" className="h-full w-full object-cover" />
-                  <button
-                    onClick={() =>
-                      updateCustomer({ photos: c.photos.filter((_, idx) => idx !== i) })
-                    }
-                    className="absolute top-0 right-0 bg-foreground/60 text-background rounded-bl text-xs px-1"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </motion.div>
   );

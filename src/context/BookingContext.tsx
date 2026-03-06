@@ -23,6 +23,7 @@ interface BookingContextValue {
   updateCustomer: (partial: Partial<CustomerDetails>) => void;
   setPaymentId: (id: string) => void;
   setCompleted: (v: boolean) => void;
+  setSkipPhotos: (v: boolean) => void;
   subtotal: number;
   photoPromoDiscount: number;
   total: number;
@@ -53,6 +54,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     customer: emptyCustomer,
     paymentId: null,
     completed: false,
+    skipPhotos: false,
   });
 
   const [catalog, setCatalog] = useState<CatalogItem[]>(defaultCatalog);
@@ -137,6 +139,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
   const setPaymentId = useCallback((paymentId: string) => setState((s) => ({ ...s, paymentId })), []);
   const setCompleted = useCallback((completed: boolean) => setState((s) => ({ ...s, completed })), []);
+  const setSkipPhotos = useCallback((skipPhotos: boolean) => setState((s) => ({ ...s, skipPhotos })), []);
 
   const subtotal = useMemo(() => state.cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0), [state.cart]);
   const hasPhotos = state.customer.photos.length > 0;
@@ -156,7 +159,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const canProceed = useMemo(() => {
     switch (state.step) {
       case 0: return !!state.serviceType;
-      case 1: return state.cart.length > 0 && state.customer.photos.length > 0;
+      case 1: return state.cart.length > 0 && (state.customer.photos.length > 0 || state.skipPhotos);
       case 2: return !!state.selectedDate && !!state.selectedTimeWindow;
       case 3: {
         const c = state.customer;
@@ -176,7 +179,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addToCart, removeFromCart, updateQuantity,
     addCustomItem, removeCustomItem,
     setSelectedDate, setSelectedTimeWindow,
-    updateCustomer, setPaymentId, setCompleted,
+    updateCustomer, setPaymentId, setCompleted, setSkipPhotos,
     subtotal, photoPromoDiscount, total, payableAmount, canProceed,
   };
 

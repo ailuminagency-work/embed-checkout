@@ -242,8 +242,8 @@ export function StepItemCatalog() {
 
       {/* Photo upload */}
       <div className="mt-6 border-t border-border pt-4">
-        <Label className="text-xs font-medium text-foreground">Photos (optional)</Label>
-        <p className="text-xs text-muted-foreground mb-2">Help us estimate more accurately.</p>
+        <Label className="text-xs font-medium text-foreground">Photos *</Label>
+        <p className="text-xs text-muted-foreground mb-2">Upload photos so we can estimate accurately.</p>
         <input
           ref={fileRef}
           type="file"

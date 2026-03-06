@@ -40,7 +40,7 @@ export const useBooking = () => {
 };
 
 const emptyCustomer: CustomerDetails = {
-  name: "", phone: "", email: "", address: "", zip: "", gateCode: "", notes: "", photos: [], propertyType: null,
+  name: "", phone: "", email: "", address: "", address2: "", zip: "", gateCode: "", notes: "", photos: [], propertyType: null,
 };
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

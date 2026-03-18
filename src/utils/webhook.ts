@@ -7,10 +7,6 @@ export async function sendBookingWebhook(
   total: number,
   payableAmount: number,
 ) {
-  if (!BOOKING_CONFIG.webhookUrl || BOOKING_CONFIG.webhookUrl.includes("YOUR-WEBHOOK-ID")) {
-    console.log("[Webhook] Skipped — no webhook URL configured.");
-    return;
-  }
 
   const payload = {
     serviceType: state.serviceType,

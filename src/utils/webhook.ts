@@ -7,10 +7,6 @@ export async function sendBookingWebhook(
   total: number,
   payableAmount: number,
 ) {
-  if (!BOOKING_CONFIG.webhookUrl || BOOKING_CONFIG.webhookUrl.includes("YOUR-WEBHOOK-ID")) {
-    console.log("[Webhook] Skipped — no webhook URL configured.");
-    return;
-  }
 
   const payload = {
     serviceType: state.serviceType,
@@ -44,14 +40,38 @@ export async function sendBookingWebhook(
     timestamp: new Date().toISOString(),
   };
 
-  try {
-    await fetch(BOOKING_CONFIG.webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    console.log("[Webhook] Sent successfully.");
-  } catch (e) {
-    console.error("[Webhook] Failed:", e);
+  const requests: Promise<void>[] = [];
+
+  // Make / n8n webhook
+  if (BOOKING_CONFIG.webhookUrl && !BOOKING_CONFIG.webhookUrl.includes("YOUR-WEBHOOK-ID")) {
+    requests.push(
+      fetch(BOOKING_CONFIG.webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(() => console.log("[Webhook:Make] Sent successfully."))
+        .catch((e) => console.error("[Webhook:Make] Failed:", e)),
+    );
   }
+
+  // Twin Agent AI webhook
+  if (BOOKING_CONFIG.twinWebhookUrl && !BOOKING_CONFIG.twinWebhookUrl.includes("YOUR-TWIN-WEBHOOK-ID")) {
+    requests.push(
+      fetch(BOOKING_CONFIG.twinWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(() => console.log("[Webhook:Twin] Sent successfully."))
+        .catch((e) => console.error("[Webhook:Twin] Failed:", e)),
+    );
+  }
+
+  if (requests.length === 0) {
+    console.log("[Webhook] Skipped — no webhook URLs configured.");
+    return;
+  }
+
+  await Promise.all(requests);
 }

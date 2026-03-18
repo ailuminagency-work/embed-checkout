@@ -32,7 +32,17 @@ interface BookingContextValue {
   canProceed: boolean;
 }
 
-const BookingContext = createContext<BookingContextValue | null>(null);
+const bookingContextGlobal = globalThis as typeof globalThis & {
+  __booking_context__?: React.Context<BookingContextValue | null>;
+};
+
+const BookingContext =
+  bookingContextGlobal.__booking_context__ ??
+  createContext<BookingContextValue | null>(null);
+
+if (!bookingContextGlobal.__booking_context__) {
+  bookingContextGlobal.__booking_context__ = BookingContext;
+}
 
 export const useBooking = () => {
   const ctx = useContext(BookingContext);

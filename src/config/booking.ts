@@ -16,7 +16,7 @@ export const BOOKING_CONFIG = {
 
   /** Twin Agent AI webhook URL — receives booking payload on success.
    *  Leave empty or keep placeholder to skip. */
-  twinWebhookUrl: "https://api.twin.so/YOUR-TWIN-WEBHOOK-ID",
+  twinWebhookUrl: "https://build.twin.so/triggers/5935b8c9-7e08-463a-9f38-d042b5e11fe9/webhook",
 
   /** ISO 4217 currency code */
   currency: "USD",

@@ -14,6 +14,10 @@ export const BOOKING_CONFIG = {
   /** Webhook URL for Make / n8n — receives full booking payload on success */
   webhookUrl: "https://hook.us1.make.com/YOUR-WEBHOOK-ID",
 
+  /** Twin Agent AI webhook URL — receives booking payload on success.
+   *  Leave empty or keep placeholder to skip. */
+  twinWebhookUrl: "https://api.twin.so/YOUR-TWIN-WEBHOOK-ID",
+
   /** ISO 4217 currency code */
   currency: "USD",
 

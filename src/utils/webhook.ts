@@ -1,18 +1,57 @@
-import { BOOKING_CONFIG } from "@/config/booking";
+import { supabase } from "@/integrations/supabase/client";
 import { BookingState } from "@/types/booking";
+import { BOOKING_CONFIG } from "@/config/booking";
 
-async function fireWebhook(label: string, url: string, payload: object): Promise<void> {
+interface WebhookConfig {
+  active_mode: string;
+  test_url: string;
+  live_url: string;
+  twin_url: string;
+}
+
+async function getWebhookConfig(): Promise<WebhookConfig | null> {
+  const { data, error } = await supabase
+    .from("webhook_settings")
+    .select("active_mode, test_url, live_url, twin_url")
+    .limit(1)
+    .single();
+  if (error) {
+    console.warn("[Webhook] Failed to fetch settings from DB, falling back to env config:", error.message);
+    return null;
+  }
+  return data;
+}
+
+async function fireWebhook(label: string, url: string, mode: string, payload: object): Promise<void> {
   console.log(`[Webhook:${label}] Sending to: ${url}`);
+  let statusCode: number | null = null;
+  let success = false;
+  let errorMessage: string | null = null;
+
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    statusCode = res.status;
+    success = res.ok;
+    if (!res.ok) errorMessage = `HTTP ${res.status} ${res.statusText}`;
     console.log(`[Webhook:${label}] Response: ${res.status} ${res.statusText}`);
-  } catch (e) {
+  } catch (e: any) {
+    errorMessage = e?.message || "Network error";
     console.error(`[Webhook:${label}] Failed:`, e);
   }
+
+  // Log to DB (fire-and-forget)
+  supabase.from("webhook_logs").insert({
+    webhook_url: url,
+    mode,
+    label,
+    status_code: statusCode,
+    success,
+    error_message: errorMessage,
+  }).then(() => {});
 }
 
 export async function sendBookingWebhook(
@@ -21,6 +60,15 @@ export async function sendBookingWebhook(
   total: number,
   payableAmount: number,
 ) {
+  // Try DB settings first, fall back to env config
+  const dbConfig = await getWebhookConfig();
+
+  const mode = dbConfig?.active_mode || BOOKING_CONFIG.webhookMode;
+  const makeUrl = dbConfig
+    ? (mode === "live" ? dbConfig.live_url : dbConfig.test_url)
+    : BOOKING_CONFIG.webhookUrl;
+  const twinUrl = dbConfig?.twin_url || BOOKING_CONFIG.twinWebhookUrl;
+
   const payload = {
     serviceType: state.serviceType,
     items: state.cart.map((c) => ({
@@ -50,24 +98,24 @@ export async function sendBookingWebhook(
     },
     stripePaymentId: state.paymentId,
     currency: BOOKING_CONFIG.currency,
-    webhookMode: BOOKING_CONFIG.webhookMode,
+    webhookMode: mode,
     timestamp: new Date().toISOString(),
   };
 
-  console.log(`[Webhook] Mode: ${BOOKING_CONFIG.webhookMode}`);
+  console.log(`[Webhook] Mode: ${mode} (source: ${dbConfig ? "database" : "env"})`);
 
   const requests: Promise<void>[] = [];
 
-  if (BOOKING_CONFIG.webhookUrl) {
-    requests.push(fireWebhook(`Make:${BOOKING_CONFIG.webhookMode}`, BOOKING_CONFIG.webhookUrl, payload));
+  if (makeUrl) {
+    requests.push(fireWebhook(`Make:${mode}`, makeUrl, mode, payload));
   }
 
-  if (BOOKING_CONFIG.twinWebhookUrl) {
-    requests.push(fireWebhook("Twin", BOOKING_CONFIG.twinWebhookUrl, payload));
+  if (twinUrl) {
+    requests.push(fireWebhook("Twin", twinUrl, mode, payload));
   }
 
   if (requests.length === 0) {
-    console.log("[Webhook] Skipped — no webhook URLs configured. Set VITE_MAKE_WEBHOOK_URL_TEST or VITE_MAKE_WEBHOOK_URL_LIVE in your env.");
+    console.log("[Webhook] Skipped — no webhook URLs configured. Set URLs in the Webhooks admin page or env vars.");
     return;
   }
 

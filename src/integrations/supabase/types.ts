@@ -68,6 +68,69 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          label: string
+          mode: string
+          payload: Json | null
+          status_code: number | null
+          success: boolean
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          label?: string
+          mode: string
+          payload?: Json | null
+          status_code?: number | null
+          success?: boolean
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          label?: string
+          mode?: string
+          payload?: Json | null
+          status_code?: number | null
+          success?: boolean
+          webhook_url?: string
+        }
+        Relationships: []
+      }
+      webhook_settings: {
+        Row: {
+          active_mode: string
+          id: string
+          live_url: string
+          test_url: string
+          twin_url: string
+          updated_at: string
+        }
+        Insert: {
+          active_mode?: string
+          id?: string
+          live_url?: string
+          test_url?: string
+          twin_url?: string
+          updated_at?: string
+        }
+        Update: {
+          active_mode?: string
+          id?: string
+          live_url?: string
+          test_url?: string
+          twin_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

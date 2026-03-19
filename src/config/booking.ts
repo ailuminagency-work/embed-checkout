@@ -2,8 +2,26 @@
  * ═══════════════════════════════════════════════════════════
  *  BOOKING WIDGET CONFIGURATION
  *  Edit the values below to customize the widget.
+ *
+ *  WEBHOOK SETUP
+ *  Set these env vars (in .env.local or secrets):
+ *    VITE_WEBHOOK_MODE          = "test" | "live"
+ *    VITE_MAKE_WEBHOOK_URL_TEST = https://hook.us1.make.com/...
+ *    VITE_MAKE_WEBHOOK_URL_LIVE = https://hook.us1.make.com/...
+ *    VITE_TWIN_WEBHOOK_URL      = https://build.twin.so/...
  * ═══════════════════════════════════════════════════════════
  */
+
+type WebhookMode = "test" | "live";
+
+const webhookMode: WebhookMode =
+  (import.meta.env.VITE_WEBHOOK_MODE as WebhookMode) || "test";
+
+const makeWebhookUrls: Record<WebhookMode, string> = {
+  test: import.meta.env.VITE_MAKE_WEBHOOK_URL_TEST || "",
+  live: import.meta.env.VITE_MAKE_WEBHOOK_URL_LIVE || "",
+};
+
 export const BOOKING_CONFIG = {
   /** Company name shown in the header */
   companyName: "CleanSlate Hauling",
@@ -11,12 +29,14 @@ export const BOOKING_CONFIG = {
   /** URL to company logo (leave empty for text-only header) */
   logoUrl: "",
 
-  /** Webhook URL for Make / n8n — receives full booking payload on success */
-  webhookUrl: "https://hook.us1.make.com/YOUR-WEBHOOK-ID",
+  /** Current webhook mode — "test" or "live" */
+  webhookMode,
 
-  /** Twin Agent AI webhook URL — receives booking payload on success.
-   *  Leave empty or keep placeholder to skip. */
-  twinWebhookUrl: "https://build.twin.so/triggers/5935b8c9-7e08-463a-9f38-d042b5e11fe9/webhook",
+  /** Active Make webhook URL (resolved from mode) */
+  webhookUrl: makeWebhookUrls[webhookMode],
+
+  /** Twin Agent AI webhook URL */
+  twinWebhookUrl: import.meta.env.VITE_TWIN_WEBHOOK_URL || "",
 
   /** ISO 4217 currency code */
   currency: "USD",

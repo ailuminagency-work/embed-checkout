@@ -1,13 +1,26 @@
 import { BOOKING_CONFIG } from "@/config/booking";
 import { BookingState } from "@/types/booking";
 
+async function fireWebhook(label: string, url: string, payload: object): Promise<void> {
+  console.log(`[Webhook:${label}] Sending to: ${url}`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    console.log(`[Webhook:${label}] Response: ${res.status} ${res.statusText}`);
+  } catch (e) {
+    console.error(`[Webhook:${label}] Failed:`, e);
+  }
+}
+
 export async function sendBookingWebhook(
   state: BookingState,
   subtotal: number,
   total: number,
   payableAmount: number,
 ) {
-
   const payload = {
     serviceType: state.serviceType,
     items: state.cart.map((c) => ({
@@ -37,39 +50,24 @@ export async function sendBookingWebhook(
     },
     stripePaymentId: state.paymentId,
     currency: BOOKING_CONFIG.currency,
+    webhookMode: BOOKING_CONFIG.webhookMode,
     timestamp: new Date().toISOString(),
   };
 
+  console.log(`[Webhook] Mode: ${BOOKING_CONFIG.webhookMode}`);
+
   const requests: Promise<void>[] = [];
 
-  // Make / n8n webhook
-  if (BOOKING_CONFIG.webhookUrl && !BOOKING_CONFIG.webhookUrl.includes("YOUR-WEBHOOK-ID")) {
-    requests.push(
-      fetch(BOOKING_CONFIG.webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-        .then(() => console.log("[Webhook:Make] Sent successfully."))
-        .catch((e) => console.error("[Webhook:Make] Failed:", e)),
-    );
+  if (BOOKING_CONFIG.webhookUrl) {
+    requests.push(fireWebhook(`Make:${BOOKING_CONFIG.webhookMode}`, BOOKING_CONFIG.webhookUrl, payload));
   }
 
-  // Twin Agent AI webhook
-  if (BOOKING_CONFIG.twinWebhookUrl && !BOOKING_CONFIG.twinWebhookUrl.includes("YOUR-TWIN-WEBHOOK-ID")) {
-    requests.push(
-      fetch(BOOKING_CONFIG.twinWebhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-        .then(() => console.log("[Webhook:Twin] Sent successfully."))
-        .catch((e) => console.error("[Webhook:Twin] Failed:", e)),
-    );
+  if (BOOKING_CONFIG.twinWebhookUrl) {
+    requests.push(fireWebhook("Twin", BOOKING_CONFIG.twinWebhookUrl, payload));
   }
 
   if (requests.length === 0) {
-    console.log("[Webhook] Skipped — no webhook URLs configured.");
+    console.log("[Webhook] Skipped — no webhook URLs configured. Set VITE_MAKE_WEBHOOK_URL_TEST or VITE_MAKE_WEBHOOK_URL_LIVE in your env.");
     return;
   }
 

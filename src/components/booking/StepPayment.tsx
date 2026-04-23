@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useBooking } from "@/context/BookingContext";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { sendBookingWebhook } from "@/utils/webhook";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import { format } from "date-fns";
 
 export function StepPayment() {
   const {
-    state, subtotal, total, payableAmount,
+    state, subtotal, total, payableAmount, itemTotal, adjustedItemTotal, zipPricing,
     setPaymentId, setCompleted,
   } = useBooking();
 
@@ -23,6 +24,14 @@ export function StepPayment() {
     await new Promise((r) => setTimeout(r, 1500));
     const fakeId = `demo_${Date.now()}`;
     setPaymentId(fakeId);
+    await supabase.from("booking_pricing_logs").insert({
+      booking_reference: fakeId,
+      zip_code: state.customer.zip,
+      zone_name: zipPricing.zoneName,
+      minimum_price: zipPricing.minimumPrice,
+      item_total: adjustedItemTotal,
+      final_price: total,
+    });
     await sendBookingWebhook(
       { ...state, paymentId: fakeId },
       subtotal,
@@ -130,14 +139,30 @@ export function StepPayment() {
             </div>
           ))}
         </div>
-        {subtotal < BOOKING_CONFIG.minimumCharge && state.cart.length > 0 && (
-          <div className="text-xs text-accent flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            Minimum charge of {BOOKING_CONFIG.currencySymbol}{BOOKING_CONFIG.minimumCharge} applied
-          </div>
+        <div className="flex justify-between text-muted-foreground">
+          <span>Item total</span>
+          <span>{BOOKING_CONFIG.currencySymbol}{itemTotal}</span>
+        </div>
+        {zipPricing.status === "resolved" && (
+          <>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Adjusted item total</span>
+              <span>{BOOKING_CONFIG.currencySymbol}{adjustedItemTotal}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Area minimum</span>
+              <span>{BOOKING_CONFIG.currencySymbol}{zipPricing.minimumPrice}</span>
+            </div>
+            {adjustedItemTotal < (zipPricing.minimumPrice ?? 0) && (
+              <div className="text-xs text-accent flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Minimum service charge applied for {zipPricing.zoneName}
+              </div>
+            )}
+          </>
         )}
         <div className="border-t border-border pt-3 flex justify-between font-bold text-foreground">
-          <span>{BOOKING_CONFIG.depositMode ? "Deposit Due" : "Total"}</span>
+          <span>{BOOKING_CONFIG.depositMode ? "Deposit Due" : "Final adjusted total"}</span>
           <span>{BOOKING_CONFIG.currencySymbol}{payableAmount}</span>
         </div>
       </div>
@@ -168,7 +193,7 @@ export function StepPayment() {
           </div>
           <Button
             onClick={handleDemoPayment}
-            disabled={loading || !agreedToTerms}
+            disabled={loading || !agreedToTerms || zipPricing.status !== "resolved"}
             className="w-full h-12 text-base font-semibold"
           >
             {loading ? (
@@ -188,7 +213,7 @@ export function StepPayment() {
           </div>
           <Button
             onClick={handleDemoPayment}
-            disabled={loading || !agreedToTerms}
+            disabled={loading || !agreedToTerms || zipPricing.status !== "resolved"}
             className="w-full h-12 text-base font-semibold"
           >
             {loading ? (

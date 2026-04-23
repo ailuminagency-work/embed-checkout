@@ -6,9 +6,11 @@ import { LogOut, Loader2 } from "lucide-react";
 import { AdminSidebar, AdminSection } from "@/components/admin/AdminSidebar";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { WebhooksManager } from "@/components/admin/WebhooksManager";
+import { ZipPricingManager } from "@/components/admin/ZipPricingManager";
 
 const sectionTitles: Record<AdminSection, string> = {
   catalog: "Catalog Manager",
+  "zip-pricing": "ZIP Pricing Manager",
   webhooks: "Webhooks",
 };
 
@@ -45,6 +47,7 @@ export default function Admin() {
         <AdminSidebar active={section} onSelect={setSection} />
         <main className="flex-1 max-w-4xl p-4">
           {section === "catalog" && <CatalogManager />}
+          {section === "zip-pricing" && <ZipPricingManager />}
           {section === "webhooks" && <WebhooksManager />}
         </main>
       </div>

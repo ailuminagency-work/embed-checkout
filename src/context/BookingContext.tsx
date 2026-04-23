@@ -1,15 +1,23 @@
-/* rebuilt */
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { BookingState, ServiceType, CatalogItem, TimeWindow, CustomerDetails } from "@/types/booking";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  BookingState,
+  CatalogItem,
+  CustomerDetails,
+  ServiceType,
+  TimeWindow,
+  ZipPricingResult,
+} from "@/types/booking";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { defaultCatalog } from "@/data/defaultCatalog";
-import { supabase } from "@/integrations/supabase/client";
 
 interface BookingContextValue {
   state: BookingState;
   catalog: CatalogItem[];
   categories: string[];
   catalogLoading: boolean;
+  zipPricing: ZipPricingResult;
+  zipLookupLoading: boolean;
   setStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -26,23 +34,37 @@ interface BookingContextValue {
   setCompleted: (v: boolean) => void;
   setSkipPhotos: (v: boolean) => void;
   subtotal: number;
+  itemTotal: number;
   photoPromoDiscount: number;
+  adjustedItemTotal: number;
   total: number;
   payableAmount: number;
   canProceed: boolean;
 }
 
-const bookingContextGlobal = globalThis as typeof globalThis & {
-  __booking_context__?: React.Context<BookingContextValue | null>;
+const BookingContext = createContext<BookingContextValue | null>(null);
+
+const emptyCustomer: CustomerDetails = {
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  address2: "",
+  zip: "",
+  gateCode: "",
+  notes: "",
+  photos: [],
+  propertyType: null,
 };
 
-const BookingContext =
-  bookingContextGlobal.__booking_context__ ??
-  createContext<BookingContextValue | null>(null);
-
-if (!bookingContextGlobal.__booking_context__) {
-  bookingContextGlobal.__booking_context__ = BookingContext;
-}
+const idleZipPricing: ZipPricingResult = {
+  zipCode: "",
+  zoneId: null,
+  zoneName: null,
+  minimumPrice: null,
+  status: "idle",
+  message: "Enter your ZIP code to confirm pricing before checkout.",
+};
 
 export const useBooking = () => {
   const ctx = useContext(BookingContext);
@@ -50,9 +72,7 @@ export const useBooking = () => {
   return ctx;
 };
 
-const emptyCustomer: CustomerDetails = {
-  name: "", phone: "", email: "", address: "", address2: "", zip: "", gateCode: "", notes: "", photos: [], propertyType: null,
-};
+const normalizeZip = (zip: string) => zip.trim();
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<BookingState>({
@@ -67,27 +87,26 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     completed: false,
     skipPhotos: false,
   });
-
   const [catalog, setCatalog] = useState<CatalogItem[]>(defaultCatalog);
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [zipPricing, setZipPricing] = useState<ZipPricingResult>(idleZipPricing);
+  const [zipLookupLoading, setZipLookupLoading] = useState(false);
 
   useEffect(() => {
     setCatalogLoading(true);
-    
+
     const fetchCatalog = async () => {
       try {
-        // If a custom catalog endpoint is configured, use that
         if (BOOKING_CONFIG.catalogEndpoint) {
-          const r = await fetch(BOOKING_CONFIG.catalogEndpoint);
-          const data = await r.json();
+          const response = await fetch(BOOKING_CONFIG.catalogEndpoint);
+          const data = await response.json();
           setCatalog(data);
         } else {
-          // Use the edge function by default
           const { data, error } = await supabase.functions.invoke("get-catalog");
           if (error) throw error;
+
           if (Array.isArray(data)) {
-            // Merge local default images for items that lack an image_url
-            const defaultImageMap = new Map(defaultCatalog.map(d => [d.id, d.imageUrl]));
+            const defaultImageMap = new Map(defaultCatalog.map((item) => [item.id, item.imageUrl]));
             const merged = data.map((item: CatalogItem) => ({
               ...item,
               imageUrl: item.imageUrl || defaultImageMap.get(item.id) || undefined,
@@ -107,7 +126,86 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchCatalog();
   }, []);
 
-  const categories = useMemo(() => [...new Set(catalog.map((i) => i.category))], [catalog]);
+  useEffect(() => {
+    const zipCode = normalizeZip(state.customer.zip);
+
+    if (!zipCode) {
+      setZipLookupLoading(false);
+      setZipPricing(idleZipPricing);
+      return;
+    }
+
+    if (!BOOKING_CONFIG.zipCodePattern.test(zipCode)) {
+      setZipLookupLoading(false);
+      setZipPricing({
+        zipCode,
+        zoneId: null,
+        zoneName: null,
+        minimumPrice: null,
+        status: "invalid",
+        message: "Enter a valid ZIP code to continue.",
+      });
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setZipLookupLoading(true);
+
+      const { data: zipMatch, error: zipError } = await supabase
+        .from("zip_to_zone")
+        .select("zone_id")
+        .eq("zip_code", zipCode)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (zipError || !zipMatch?.zone_id) {
+        setZipPricing({
+          zipCode,
+          zoneId: null,
+          zoneName: null,
+          minimumPrice: null,
+          status: "unmapped",
+          message: "We need to confirm pricing for your area",
+        });
+        setZipLookupLoading(false);
+        return;
+      }
+
+      const { data: zone, error: zoneError } = await supabase
+        .from("pricing_zones")
+        .select("id, zone_name, minimum_price")
+        .eq("id", zipMatch.zone_id)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (zoneError || !zone) {
+        setZipPricing({
+          zipCode,
+          zoneId: null,
+          zoneName: null,
+          minimumPrice: null,
+          status: "unmapped",
+          message: "We need to confirm pricing for your area",
+        });
+        setZipLookupLoading(false);
+        return;
+      }
+
+      setZipPricing({
+        zipCode,
+        zoneId: zone.id,
+        zoneName: zone.zone_name,
+        minimumPrice: Number(zone.minimum_price),
+        status: "resolved",
+        message: null,
+      });
+      setZipLookupLoading(false);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [state.customer.zip]);
+
+  const categories = useMemo(() => [...new Set(catalog.map((item) => item.category))], [catalog]);
 
   const setStep = useCallback((step: number) => setState((s) => ({ ...s, step })), []);
   const nextStep = useCallback(() => setState((s) => ({ ...s, step: Math.min(s.step + 1, 4) })), []);
@@ -116,22 +214,33 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addToCart = useCallback((item: CatalogItem) => {
     setState((s) => {
-      const existing = s.cart.find((c) => c.item.id === item.id);
+      const existing = s.cart.find((entry) => entry.item.id === item.id);
       if (existing) {
-        return { ...s, cart: s.cart.map((c) => (c.item.id === item.id ? { ...c, quantity: c.quantity + 1 } : c)) };
+        return {
+          ...s,
+          cart: s.cart.map((entry) =>
+            entry.item.id === item.id ? { ...entry, quantity: entry.quantity + 1 } : entry,
+          ),
+        };
       }
       return { ...s, cart: [...s.cart, { item, quantity: 1 }] };
     });
   }, []);
 
   const removeFromCart = useCallback((itemId: string) => {
-    setState((s) => ({ ...s, cart: s.cart.filter((c) => c.item.id !== itemId) }));
+    setState((s) => ({ ...s, cart: s.cart.filter((entry) => entry.item.id !== itemId) }));
   }, []);
 
   const updateQuantity = useCallback((itemId: string, quantity: number) => {
     setState((s) => {
-      if (quantity <= 0) return { ...s, cart: s.cart.filter((c) => c.item.id !== itemId) };
-      return { ...s, cart: s.cart.map((c) => (c.item.id === itemId ? { ...c, quantity } : c)) };
+      if (quantity <= 0) {
+        return { ...s, cart: s.cart.filter((entry) => entry.item.id !== itemId) };
+      }
+
+      return {
+        ...s,
+        cart: s.cart.map((entry) => (entry.item.id === itemId ? { ...entry, quantity } : entry)),
+      };
     });
   }, []);
 
@@ -140,58 +249,106 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const removeCustomItem = useCallback((index: number) => {
-    setState((s) => ({ ...s, customItems: s.customItems.filter((_, i) => i !== index) }));
+    setState((s) => ({ ...s, customItems: s.customItems.filter((_, itemIndex) => itemIndex !== index) }));
   }, []);
 
-  const setSelectedDate = useCallback((selectedDate: Date | null) => setState((s) => ({ ...s, selectedDate })), []);
-  const setSelectedTimeWindow = useCallback((selectedTimeWindow: TimeWindow | null) => setState((s) => ({ ...s, selectedTimeWindow })), []);
+  const setSelectedDate = useCallback((selectedDate: Date | null) => {
+    setState((s) => ({ ...s, selectedDate }));
+  }, []);
+
+  const setSelectedTimeWindow = useCallback((selectedTimeWindow: TimeWindow | null) => {
+    setState((s) => ({ ...s, selectedTimeWindow }));
+  }, []);
+
   const updateCustomer = useCallback((partial: Partial<CustomerDetails>) => {
     setState((s) => ({ ...s, customer: { ...s.customer, ...partial } }));
   }, []);
+
   const setPaymentId = useCallback((paymentId: string) => setState((s) => ({ ...s, paymentId })), []);
   const setCompleted = useCallback((completed: boolean) => setState((s) => ({ ...s, completed })), []);
   const setSkipPhotos = useCallback((skipPhotos: boolean) => setState((s) => ({ ...s, skipPhotos })), []);
 
-  const subtotal = useMemo(() => state.cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0), [state.cart]);
+  const itemTotal = useMemo(
+    () => state.cart.reduce((sum, entry) => sum + entry.item.price * entry.quantity, 0),
+    [state.cart],
+  );
+  const subtotal = itemTotal;
   const hasPhotos = state.customer.photos.length > 0;
   const photoPromoDiscount = useMemo(
-    () => hasPhotos && BOOKING_CONFIG.photoPromoPercent > 0
-      ? Math.round((subtotal * BOOKING_CONFIG.photoPromoPercent) / 100)
-      : 0,
-    [subtotal, hasPhotos],
+    () => (hasPhotos && BOOKING_CONFIG.photoPromoPercent > 0
+      ? Math.round((itemTotal * BOOKING_CONFIG.photoPromoPercent) / 100)
+      : 0),
+    [hasPhotos, itemTotal],
   );
-  const discountedSubtotal = subtotal - photoPromoDiscount;
-  const total = useMemo(() => Math.max(discountedSubtotal, state.cart.length > 0 ? BOOKING_CONFIG.minimumCharge : 0), [discountedSubtotal, state.cart.length]);
+  const adjustedItemTotal = useMemo(() => Math.max(itemTotal - photoPromoDiscount, 0), [itemTotal, photoPromoDiscount]);
+  const total = useMemo(() => {
+    if (state.cart.length === 0) return 0;
+    if (zipPricing.minimumPrice == null) return adjustedItemTotal;
+    return Math.max(adjustedItemTotal, zipPricing.minimumPrice);
+  }, [adjustedItemTotal, state.cart.length, zipPricing.minimumPrice]);
   const payableAmount = useMemo(
     () => (BOOKING_CONFIG.depositMode ? Math.ceil((total * BOOKING_CONFIG.depositPercentage) / 100) : total),
     [total],
   );
 
+  const zipReady = zipPricing.status === "resolved";
+
   const canProceed = useMemo(() => {
     switch (state.step) {
-      case 0: return !!state.serviceType;
-      case 1: return state.cart.length > 0 && (state.customer.photos.length > 0 || state.skipPhotos);
-      case 2: return !!state.selectedDate && !!state.selectedTimeWindow;
+      case 0:
+        return !!state.serviceType && zipReady;
+      case 1:
+        return state.cart.length > 0 && (state.customer.photos.length > 0 || state.skipPhotos) && zipReady;
+      case 2:
+        return !!state.selectedDate && !!state.selectedTimeWindow && zipReady;
       case 3: {
-        const c = state.customer;
-        const hasRequired = !!(c.name && c.phone && c.email && c.address && c.zip && c.propertyType);
-        if (!hasRequired) return false;
-        if (BOOKING_CONFIG.serviceAreaZips.length > 0 && !BOOKING_CONFIG.serviceAreaZips.includes(c.zip)) return false;
-        return true;
+        const customer = state.customer;
+        return !!(
+          customer.name &&
+          customer.phone &&
+          customer.email &&
+          customer.address &&
+          customer.zip &&
+          customer.propertyType &&
+          zipReady
+        );
       }
-      case 4: return !!state.paymentId;
-      default: return false;
+      case 4:
+        return !!state.paymentId;
+      default:
+        return false;
     }
-  }, [state]);
+  }, [state, zipReady]);
 
   const value: BookingContextValue = {
-    state, catalog, categories, catalogLoading,
-    setStep, nextStep, prevStep, setServiceType,
-    addToCart, removeFromCart, updateQuantity,
-    addCustomItem, removeCustomItem,
-    setSelectedDate, setSelectedTimeWindow,
-    updateCustomer, setPaymentId, setCompleted, setSkipPhotos,
-    subtotal, photoPromoDiscount, total, payableAmount, canProceed,
+    state,
+    catalog,
+    categories,
+    catalogLoading,
+    zipPricing,
+    zipLookupLoading,
+    setStep,
+    nextStep,
+    prevStep,
+    setServiceType,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    addCustomItem,
+    removeCustomItem,
+    setSelectedDate,
+    setSelectedTimeWindow,
+    updateCustomer,
+    setPaymentId,
+    setCompleted,
+    setSkipPhotos,
+    subtotal,
+    itemTotal,
+    photoPromoDiscount,
+    adjustedItemTotal,
+    total,
+    payableAmount,
+    canProceed,
   };
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

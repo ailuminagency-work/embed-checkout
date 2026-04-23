@@ -33,6 +33,17 @@ export interface CustomerDetails {
   propertyType: PropertyType | null;
 }
 
+export type ZipPricingStatus = "idle" | "invalid" | "loading" | "resolved" | "unmapped";
+
+export interface ZipPricingResult {
+  zipCode: string;
+  zoneId: string | null;
+  zoneName: string | null;
+  minimumPrice: number | null;
+  status: ZipPricingStatus;
+  message: string | null;
+}
+
 export interface BookingState {
   step: number;
   serviceType: ServiceType | null;

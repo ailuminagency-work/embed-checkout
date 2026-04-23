@@ -33,6 +33,7 @@ interface BookingContextValue {
   setPaymentId: (id: string) => void;
   setCompleted: (v: boolean) => void;
   setSkipPhotos: (v: boolean) => void;
+  subtotal: number;
   itemTotal: number;
   photoPromoDiscount: number;
   adjustedItemTotal: number;
@@ -271,6 +272,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     () => state.cart.reduce((sum, entry) => sum + entry.item.price * entry.quantity, 0),
     [state.cart],
   );
+  const subtotal = itemTotal;
   const hasPhotos = state.customer.photos.length > 0;
   const photoPromoDiscount = useMemo(
     () => (hasPhotos && BOOKING_CONFIG.photoPromoPercent > 0
@@ -340,6 +342,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPaymentId,
     setCompleted,
     setSkipPhotos,
+    subtotal,
     itemTotal,
     photoPromoDiscount,
     adjustedItemTotal,

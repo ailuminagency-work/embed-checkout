@@ -15,6 +15,15 @@ const options: { type: ServiceType; title: string; desc: string; Icon: typeof Tr
 
 export function StepServiceType() {
   const { state, setServiceType, nextStep, updateCustomer, zipPricing, zipLookupLoading } = useBooking();
+  const zipReady = zipPricing.status === "resolved";
+  const zipBlocked = !!state.customer.zip && !zipReady;
+  const zipMessage = zipLookupLoading
+    ? "Checking pricing for your area..."
+    : zipReady
+      ? `Minimum service charge for your area: $${zipPricing.minimumPrice}`
+      : zipPricing.status === "unmapped"
+        ? "We need to confirm pricing for your area"
+        : "Enter your ZIP code first to continue";
 
   return (
     <motion.div
@@ -37,12 +46,8 @@ export function StepServiceType() {
           inputMode="numeric"
           maxLength={10}
         />
-        <p className="mt-2 text-xs text-muted-foreground">
-          {zipLookupLoading
-            ? "Checking pricing for your area..."
-            : zipPricing.status === "resolved"
-              ? `Minimum service charge for your area: $${zipPricing.minimumPrice}`
-              : zipPricing.message}
+        <p className={`mt-2 text-xs ${zipBlocked ? "text-destructive" : "text-muted-foreground"}`}>
+          {zipMessage}
         </p>
       </div>
 
@@ -50,15 +55,19 @@ export function StepServiceType() {
         {options.map(({ type, title, desc, Icon, bg }) => (
           <button
             key={type}
+            type="button"
+            disabled={!zipReady}
             onClick={() => {
+              if (!zipReady) return;
               setServiceType(type);
               nextStep();
             }}
             className={cn(
-              "relative rounded-xl border-2 text-left transition-all hover:shadow-lg overflow-hidden min-h-[200px] flex flex-col justify-end",
+              "relative rounded-xl border-2 text-left transition-all overflow-hidden min-h-[200px] flex flex-col justify-end",
               state.serviceType === type
                 ? "border-primary shadow-sm ring-2 ring-primary/30"
-                : "border-border hover:border-primary/40",
+                : "border-border",
+              zipReady ? "hover:shadow-lg hover:border-primary/40" : "cursor-not-allowed opacity-50 grayscale",
             )}
           >
             {/* Background image */}

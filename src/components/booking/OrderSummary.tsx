@@ -6,8 +6,8 @@ import { ShoppingCart, AlertTriangle, ArrowRight, ArrowLeft, Tag } from "lucide-
 
 export function OrderSummary() {
   const {
-    state, subtotal, photoPromoDiscount, total, payableAmount,
-    canProceed, nextStep, prevStep,
+    state, itemTotal, adjustedItemTotal, photoPromoDiscount, total, payableAmount,
+    canProceed, nextStep, prevStep, zipPricing,
   } = useBooking();
 
   return (
@@ -92,8 +92,8 @@ export function OrderSummary() {
         {state.cart.length > 0 && (
           <div className="space-y-1 text-sm">
             <div className="flex justify-between text-muted-foreground">
-              <span>Subtotal</span>
-              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{subtotal}</span>
+              <span>Item total</span>
+              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{itemTotal}</span>
             </div>
             {photoPromoDiscount > 0 && (
               <div className="flex justify-between text-green-600">
@@ -104,14 +104,32 @@ export function OrderSummary() {
                 <span className="tabular-nums">-{BOOKING_CONFIG.currencySymbol}{photoPromoDiscount}</span>
               </div>
             )}
-            {subtotal < BOOKING_CONFIG.minimumCharge && (
-              <div className="flex items-center gap-1 text-xs text-accent">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Adjusted item total</span>
+              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{adjustedItemTotal}</span>
+            </div>
+            {zipPricing.status === "resolved" && (
+              <>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Area minimum</span>
+                  <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{zipPricing.minimumPrice}</span>
+                </div>
+                {adjustedItemTotal < (zipPricing.minimumPrice ?? 0) && (
+                  <div className="flex items-center gap-1 text-xs text-accent">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Minimum service charge applied for {zipPricing.zoneName}</span>
+                  </div>
+                )}
+              </>
+            )}
+            {zipPricing.status !== "resolved" && state.customer.zip && (
+              <div className="flex items-center gap-1 text-xs text-destructive">
                 <AlertTriangle className="h-3 w-3" />
-                <span>Min. charge {BOOKING_CONFIG.currencySymbol}{BOOKING_CONFIG.minimumCharge}</span>
+                <span>{zipPricing.message}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-foreground">
-              <span>{BOOKING_CONFIG.depositMode ? "Deposit" : "Total"}</span>
+              <span>{BOOKING_CONFIG.depositMode ? "Deposit" : "Final adjusted total"}</span>
               <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{payableAmount}</span>
             </div>
           </div>

@@ -1,19 +1,13 @@
 import { motion } from "framer-motion";
 import { useBooking } from "@/context/BookingContext";
-import { BOOKING_CONFIG } from "@/config/booking";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Home, Building2, Briefcase, Building } from "lucide-react";
 
 export function StepCustomerDetails() {
-  const { state, updateCustomer } = useBooking();
+  const { state, updateCustomer, zipPricing, zipLookupLoading } = useBooking();
   const c = state.customer;
-
-  const zipInvalid =
-    BOOKING_CONFIG.serviceAreaZips.length > 0 &&
-    c.zip.length >= 5 &&
-    !BOOKING_CONFIG.serviceAreaZips.includes(c.zip);
 
   return (
     <motion.div
@@ -127,7 +121,7 @@ export function StepCustomerDetails() {
             {zipInvalid && (
               <p className="text-xs text-destructive mt-1 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
-                Outside our service area
+                {zipLookupLoading ? "Checking pricing..." : zipPricing.message || "Enter a valid ZIP code"}
               </p>
             )}
           </div>

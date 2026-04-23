@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { useBooking } from "@/context/BookingContext";
 import { ServiceType } from "@/types/booking";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Truck, Heart } from "lucide-react";
 import junkRemovalBg from "@/assets/junk-removal-bg.jpg";
 import donationPickupBg from "@/assets/donation-pickup-bg.jpg";
@@ -12,7 +14,7 @@ const options: { type: ServiceType; title: string; desc: string; Icon: typeof Tr
 ];
 
 export function StepServiceType() {
-  const { state, setServiceType, nextStep } = useBooking();
+  const { state, setServiceType, nextStep, updateCustomer, zipPricing, zipLookupLoading } = useBooking();
 
   return (
     <motion.div
@@ -23,6 +25,26 @@ export function StepServiceType() {
     >
       <h2 className="text-xl font-bold text-foreground mb-1">What do you need?</h2>
       <p className="text-sm text-muted-foreground mb-6">Choose the service that fits your needs.</p>
+
+      <div className="mb-6 rounded-xl border border-border bg-card p-4">
+        <Label htmlFor="service-zip" className="text-xs font-medium text-foreground">ZIP Code *</Label>
+        <Input
+          id="service-zip"
+          value={state.customer.zip}
+          onChange={(e) => updateCustomer({ zip: e.target.value })}
+          placeholder="90210"
+          className="mt-2 bg-background"
+          inputMode="numeric"
+          maxLength={10}
+        />
+        <p className="mt-2 text-xs text-muted-foreground">
+          {zipLookupLoading
+            ? "Checking pricing for your area..."
+            : zipPricing.status === "resolved"
+              ? `Minimum service charge for your area: $${zipPricing.minimumPrice}`
+              : zipPricing.message}
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {options.map(({ type, title, desc, Icon, bg }) => (

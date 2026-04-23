@@ -44,11 +44,8 @@ export const BOOKING_CONFIG = {
   /** Currency display symbol */
   currencySymbol: "$",
 
-  /** Minimum order charge in dollars */
-  minimumCharge: 75,
-
-  /** Allowed ZIP codes — empty array means no filter */
-  serviceAreaZips: [] as string[],
+  /** ZIP code validation pattern */
+  zipCodePattern: /^\d{5}(?:-\d{4})?$/,
 
   /** true = collect deposit only; false = collect full payment */
   depositMode: false,

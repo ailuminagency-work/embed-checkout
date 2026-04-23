@@ -8,6 +8,7 @@ import { AlertCircle, Home, Building2, Briefcase, Building } from "lucide-react"
 export function StepCustomerDetails() {
   const { state, updateCustomer, zipPricing, zipLookupLoading } = useBooking();
   const c = state.customer;
+  const zipInvalid = c.zip.length > 0 && zipPricing.status !== "resolved";
 
   return (
     <motion.div

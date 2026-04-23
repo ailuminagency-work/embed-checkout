@@ -96,7 +96,7 @@ export function OrderSummary() {
               <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{itemTotal}</span>
             </div>
             {photoPromoDiscount > 0 && (
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-success">
                 <span className="flex items-center gap-1">
                   <Tag className="h-3 w-3" />
                   Photo promo ({BOOKING_CONFIG.photoPromoPercent}% off)

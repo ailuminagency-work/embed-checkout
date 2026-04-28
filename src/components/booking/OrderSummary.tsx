@@ -117,7 +117,7 @@ export function OrderSummary() {
                 {adjustedItemTotal < (zipPricing.minimumPrice ?? 0) && (
                   <div className="flex items-center gap-1 text-xs text-accent">
                     <AlertTriangle className="h-3 w-3" />
-                    <span>Minimum service charge applied for {zipPricing.zoneName}</span>
+                    <span>Minimum service charge applied for ZIP {zipPricing.zipCode}</span>
                   </div>
                 )}
               </>

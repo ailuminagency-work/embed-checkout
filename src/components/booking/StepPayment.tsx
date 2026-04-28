@@ -27,7 +27,6 @@ export function StepPayment() {
     await supabase.from("booking_pricing_logs").insert({
       booking_reference: fakeId,
       zip_code: state.customer.zip,
-      zone_name: zipPricing.zoneName,
       minimum_price: zipPricing.minimumPrice,
       item_total: adjustedItemTotal,
       final_price: total,
@@ -156,7 +155,7 @@ export function StepPayment() {
             {adjustedItemTotal < (zipPricing.minimumPrice ?? 0) && (
               <div className="text-xs text-accent flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
-                Minimum service charge applied for {zipPricing.zoneName}
+                Minimum service charge applied for ZIP {zipPricing.zipCode}
               </div>
             )}
           </>

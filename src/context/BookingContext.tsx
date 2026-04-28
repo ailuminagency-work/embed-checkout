@@ -59,8 +59,6 @@ const emptyCustomer: CustomerDetails = {
 
 const idleZipPricing: ZipPricingResult = {
   zipCode: "",
-  zoneId: null,
-  zoneName: null,
   minimumPrice: null,
   status: "idle",
   message: "Enter your ZIP code to confirm pricing before checkout.",
@@ -139,8 +137,6 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setZipLookupLoading(false);
       setZipPricing({
         zipCode,
-        zoneId: null,
-        zoneName: null,
         minimumPrice: null,
         status: "invalid",
         message: "Enter a valid ZIP code to continue.",
@@ -151,38 +147,16 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const timer = window.setTimeout(async () => {
       setZipLookupLoading(true);
 
-      const { data: zipMatch, error: zipError } = await supabase
-        .from("zip_to_zone")
-        .select("zone_id")
+      const { data: row, error } = await supabase
+        .from("zip_pricing")
+        .select("minimum_price")
         .eq("zip_code", zipCode)
         .eq("active", true)
         .maybeSingle();
 
-      if (zipError || !zipMatch?.zone_id) {
+      if (error || !row) {
         setZipPricing({
           zipCode,
-          zoneId: null,
-          zoneName: null,
-          minimumPrice: null,
-          status: "unmapped",
-          message: "We need to confirm pricing for your area",
-        });
-        setZipLookupLoading(false);
-        return;
-      }
-
-      const { data: zone, error: zoneError } = await supabase
-        .from("pricing_zones")
-        .select("id, zone_name, minimum_price")
-        .eq("id", zipMatch.zone_id)
-        .eq("active", true)
-        .maybeSingle();
-
-      if (zoneError || !zone) {
-        setZipPricing({
-          zipCode,
-          zoneId: null,
-          zoneName: null,
           minimumPrice: null,
           status: "unmapped",
           message: "We need to confirm pricing for your area",
@@ -193,9 +167,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       setZipPricing({
         zipCode,
-        zoneId: zone.id,
-        zoneName: zone.zone_name,
-        minimumPrice: Number(zone.minimum_price),
+        minimumPrice: Number(row.minimum_price),
         status: "resolved",
         message: null,
       });

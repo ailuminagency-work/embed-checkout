@@ -37,8 +37,6 @@ export type ZipPricingStatus = "idle" | "invalid" | "loading" | "resolved" | "un
 
 export interface ZipPricingResult {
   zipCode: string;
-  zoneId: string | null;
-  zoneName: string | null;
   minimumPrice: number | null;
   status: ZipPricingStatus;
   message: string | null;

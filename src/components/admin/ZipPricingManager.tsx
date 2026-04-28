@@ -10,43 +10,32 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
-interface PricingZone {
-  id: string;
-  zone_name: string;
-  minimum_price: number;
-  active: boolean;
-}
-
-interface ZipMapRow {
+interface ZipPricingRow {
   id: string;
   zip_code: string;
-  zone_id: string;
+  minimum_price: number;
   active: boolean;
 }
 
 export function ZipPricingManager() {
   const { toast } = useToast();
-  const [zones, setZones] = useState<PricingZone[]>([]);
-  const [zipRows, setZipRows] = useState<ZipMapRow[]>([]);
+  const [rows, setRows] = useState<ZipPricingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [zoneDialogOpen, setZoneDialogOpen] = useState(false);
-  const [zipDialogOpen, setZipDialogOpen] = useState(false);
-  const [zoneForm, setZoneForm] = useState({ zone_name: "", minimum_price: 0 });
-  const [zipForm, setZipForm] = useState({ zip_code: "", zone_id: "" });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({ zip_code: "", minimum_price: 0 });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [{ data: zoneData, error: zoneError }, { data: zipData, error: zipError }] = await Promise.all([
-      supabase.from("pricing_zones").select("id, zone_name, minimum_price, active").order("zone_name"),
-      supabase.from("zip_to_zone").select("id, zip_code, zone_id, active").order("zip_code"),
-    ]);
+    const { data, error } = await supabase
+      .from("zip_pricing")
+      .select("id, zip_code, minimum_price, active")
+      .order("zip_code");
 
-    if (zoneError || zipError) {
-      toast({ variant: "destructive", title: "Unable to load ZIP pricing" });
+    if (error) {
+      toast({ variant: "destructive", title: "Unable to load ZIP pricing", description: error.message });
     } else {
-      setZones((zoneData ?? []) as PricingZone[]);
-      setZipRows((zipData ?? []) as ZipMapRow[]);
+      setRows((data ?? []).map((row) => ({ ...row, minimum_price: Number(row.minimum_price) })));
     }
     setLoading(false);
   }, [toast]);
@@ -55,139 +44,144 @@ export function ZipPricingManager() {
     fetchData();
   }, [fetchData]);
 
-  const zoneMap = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
-  const filteredZipRows = useMemo(
-    () => zipRows.filter((row) => row.zip_code.includes(search.trim())),
-    [zipRows, search],
+  const filteredRows = useMemo(
+    () => rows.filter((row) => row.zip_code.includes(search.trim())),
+    [rows, search],
   );
 
-  const saveZone = async () => {
-    const { error } = await supabase.from("pricing_zones").insert(zoneForm);
-    if (error) {
-      toast({ variant: "destructive", title: "Zone save failed", description: error.message });
+  const saveRow = async () => {
+    if (!form.zip_code.trim()) {
+      toast({ variant: "destructive", title: "ZIP code required" });
       return;
     }
-    setZoneDialogOpen(false);
-    setZoneForm({ zone_name: "", minimum_price: 0 });
-    fetchData();
-  };
-
-  const saveZip = async () => {
-    const { error } = await supabase.from("zip_to_zone").insert(zipForm);
+    const { error } = await supabase.from("zip_pricing").insert({
+      zip_code: form.zip_code.trim(),
+      minimum_price: form.minimum_price,
+    });
     if (error) {
-      toast({ variant: "destructive", title: "ZIP save failed", description: error.message });
+      toast({ variant: "destructive", title: "Save failed", description: error.message });
       return;
     }
-    setZipDialogOpen(false);
-    setZipForm({ zip_code: "", zone_id: zones[0]?.id ?? "" });
+    setDialogOpen(false);
+    setForm({ zip_code: "", minimum_price: 0 });
     fetchData();
   };
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Zones</CardTitle>
-          <CardDescription>Manage minimum charges by pricing zone.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Dialog open={zoneDialogOpen} onOpenChange={setZoneDialogOpen}>
-            <DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" />Add Zone</Button></DialogTrigger>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">ZIP Pricing</CardTitle>
+        <CardDescription>Set the minimum service charge per ZIP code. Required for checkout.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <Input
+            placeholder="Search ZIP codes"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-xs"
+          />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="mr-1 h-4 w-4" />Add ZIP</Button>
+            </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>New Zone</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>New ZIP Pricing</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div className="space-y-1"><Label>Zone name</Label><Input value={zoneForm.zone_name} onChange={(e) => setZoneForm((s) => ({ ...s, zone_name: e.target.value }))} /></div>
-                <div className="space-y-1"><Label>Minimum price</Label><Input type="number" min={0} value={zoneForm.minimum_price} onChange={(e) => setZoneForm((s) => ({ ...s, minimum_price: Number(e.target.value) }))} /></div>
+                <div className="space-y-1">
+                  <Label>ZIP code</Label>
+                  <Input
+                    value={form.zip_code}
+                    onChange={(e) => setForm((s) => ({ ...s, zip_code: e.target.value }))}
+                    placeholder="90210"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Minimum price</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.minimum_price}
+                    onChange={(e) => setForm((s) => ({ ...s, minimum_price: Number(e.target.value) }))}
+                  />
+                </div>
               </div>
-              <DialogFooter><Button onClick={saveZone}>Save Zone</Button></DialogFooter>
+              <DialogFooter><Button onClick={saveRow}>Save</Button></DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
 
-          <Table>
-            <TableHeader><TableRow><TableHead>Zone</TableHead><TableHead>Minimum</TableHead><TableHead>Active</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {zones.map((zone) => (
-                <TableRow key={zone.id}>
-                  <TableCell>
-                    <Input value={zone.zone_name} onChange={async (e) => {
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ZIP</TableHead>
+              <TableHead>Minimum Price</TableHead>
+              <TableHead>Active</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredRows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  <Input
+                    value={row.zip_code}
+                    onChange={async (e) => {
                       const value = e.target.value;
-                      setZones((rows) => rows.map((row) => row.id === zone.id ? { ...row, zone_name: value } : row));
-                      await supabase.from("pricing_zones").update({ zone_name: value }).eq("id", zone.id);
-                    }} />
-                  </TableCell>
-                  <TableCell>
-                    <Input type="number" min={0} value={zone.minimum_price} onChange={async (e) => {
+                      setRows((items) => items.map((r) => r.id === row.id ? { ...r, zip_code: value } : r));
+                      await supabase.from("zip_pricing").update({ zip_code: value }).eq("id", row.id);
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={row.minimum_price}
+                    onChange={async (e) => {
                       const value = Number(e.target.value);
-                      setZones((rows) => rows.map((row) => row.id === zone.id ? { ...row, minimum_price: value } : row));
-                      await supabase.from("pricing_zones").update({ minimum_price: value }).eq("id", zone.id);
-                    }} />
-                  </TableCell>
-                  <TableCell><Switch checked={zone.active} onCheckedChange={async (checked) => {
-                    setZones((rows) => rows.map((row) => row.id === zone.id ? { ...row, active: checked } : row));
-                    await supabase.from("pricing_zones").update({ active: checked }).eq("id", zone.id);
-                  }} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ZIP Codes</CardTitle>
-          <CardDescription>Search, assign, and disable ZIP mappings.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <Input placeholder="Search ZIP codes" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
-            <Dialog open={zipDialogOpen} onOpenChange={setZipDialogOpen}>
-              <DialogTrigger asChild><Button size="sm"><Plus className="mr-1 h-4 w-4" />Add ZIP</Button></DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>New ZIP Mapping</DialogTitle></DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-1"><Label>ZIP code</Label><Input value={zipForm.zip_code} onChange={(e) => setZipForm((s) => ({ ...s, zip_code: e.target.value }))} /></div>
-                  <div className="space-y-1"><Label>Zone ID</Label><Input value={zipForm.zone_id} onChange={(e) => setZipForm((s) => ({ ...s, zone_id: e.target.value }))} placeholder={zones[0]?.id ?? "Select a zone"} /></div>
-                </div>
-                <DialogFooter><Button onClick={saveZip}>Save ZIP</Button></DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <Table>
-            <TableHeader><TableRow><TableHead>ZIP</TableHead><TableHead>Zone</TableHead><TableHead>Active</TableHead><TableHead /></TableRow></TableHeader>
-            <TableBody>
-              {filteredZipRows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell><Input value={row.zip_code} onChange={async (e) => {
-                    const value = e.target.value;
-                    setZipRows((rows) => rows.map((zip) => zip.id === row.id ? { ...zip, zip_code: value } : zip));
-                    await supabase.from("zip_to_zone").update({ zip_code: value }).eq("id", row.id);
-                  }} /></TableCell>
-                  <TableCell><Input value={zoneMap.get(row.zone_id)?.zone_name ?? row.zone_id} onChange={async (e) => {
-                    const zone = zones.find((item) => item.zone_name === e.target.value || item.id === e.target.value);
-                    if (!zone) return;
-                    setZipRows((rows) => rows.map((zip) => zip.id === row.id ? { ...zip, zone_id: zone.id } : zip));
-                    await supabase.from("zip_to_zone").update({ zone_id: zone.id }).eq("id", row.id);
-                  }} /></TableCell>
-                  <TableCell><Switch checked={row.active} onCheckedChange={async (checked) => {
-                    setZipRows((rows) => rows.map((zip) => zip.id === row.id ? { ...zip, active: checked } : zip));
-                    await supabase.from("zip_to_zone").update({ active: checked }).eq("id", row.id);
-                  }} /></TableCell>
-                  <TableCell><Button variant="ghost" size="icon" onClick={async () => {
-                    await supabase.from("zip_to_zone").delete().eq("id", row.id);
+                      setRows((items) => items.map((r) => r.id === row.id ? { ...r, minimum_price: value } : r));
+                      await supabase.from("zip_pricing").update({ minimum_price: value }).eq("id", row.id);
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={row.active}
+                    onCheckedChange={async (checked) => {
+                      setRows((items) => items.map((r) => r.id === row.id ? { ...r, active: checked } : r));
+                      await supabase.from("zip_pricing").update({ active: checked }).eq("id", row.id);
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" onClick={async () => {
+                    await supabase.from("zip_pricing").delete().eq("id", row.id);
                     fetchData();
-                  }}><Trash2 className="h-4 w-4" /></Button></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+                  }}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {filteredRows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">
+                  No ZIP codes configured yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

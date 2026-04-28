@@ -23,7 +23,6 @@ export type Database = {
           item_total: number
           minimum_price: number | null
           zip_code: string
-          zone_name: string | null
         }
         Insert: {
           booking_reference?: string | null
@@ -33,7 +32,6 @@ export type Database = {
           item_total?: number
           minimum_price?: number | null
           zip_code: string
-          zone_name?: string | null
         }
         Update: {
           booking_reference?: string | null
@@ -43,7 +41,6 @@ export type Database = {
           item_total?: number
           minimum_price?: number | null
           zip_code?: string
-          zone_name?: string | null
         }
         Relationships: []
       }
@@ -80,33 +77,6 @@ export type Database = {
           price?: number
           sort_order?: number
           updated_at?: string
-        }
-        Relationships: []
-      }
-      pricing_zones: {
-        Row: {
-          active: boolean
-          created_at: string
-          id: string
-          minimum_price: number
-          updated_at: string
-          zone_name: string
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          minimum_price?: number
-          updated_at?: string
-          zone_name: string
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          minimum_price?: number
-          updated_at?: string
-          zone_name?: string
         }
         Relationships: []
       }
@@ -191,40 +161,32 @@ export type Database = {
         }
         Relationships: []
       }
-      zip_to_zone: {
+      zip_pricing: {
         Row: {
           active: boolean
           created_at: string
           id: string
+          minimum_price: number
           updated_at: string
           zip_code: string
-          zone_id: string
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
+          minimum_price?: number
           updated_at?: string
           zip_code: string
-          zone_id: string
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
+          minimum_price?: number
           updated_at?: string
           zip_code?: string
-          zone_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "zip_to_zone_zone_id_fkey"
-            columns: ["zone_id"]
-            isOneToOne: false
-            referencedRelation: "pricing_zones"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {

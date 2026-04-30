@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2, Loader2, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle, Lock } from "lucide-react";
 import { format } from "date-fns";
 
 type PaymentStatus = "idle" | "processing" | "success" | "error";
 
 export function StepPayment() {
   const {
-    state, subtotal, total, payableAmount, itemTotal, adjustedItemTotal, zipPricing,
+    state, subtotal, total, payableAmount, adjustedItemTotal, zipPricing,
     setPaymentId, setCompleted,
   } = useBooking();
 
@@ -129,68 +129,14 @@ export function StepPayment() {
           : "Full payment is required to confirm your booking."}
       </p>
 
-      {/* Order review */}
-      <div className="bg-card border border-border rounded-xl p-4 mb-6 space-y-3 text-sm">
-        <div className="flex justify-between text-muted-foreground">
-          <span>Service</span>
-          <span className="font-medium text-foreground capitalize">
-            {state.serviceType?.replace("-", " ")}
-          </span>
-        </div>
-        <div className="flex justify-between text-muted-foreground">
-          <span>Date</span>
-          <span className="font-medium text-foreground">
-            {state.selectedDate ? format(state.selectedDate, "MMM d, yyyy") : "—"}
-          </span>
-        </div>
-        <div className="flex justify-between text-muted-foreground">
-          <span>Time</span>
-          <span className="font-medium text-foreground">{state.selectedTimeWindow?.label ?? "—"}</span>
-        </div>
-        <div className="border-t border-border pt-3">
-          {state.cart.map((c) => (
-            <div key={c.item.id} className="flex justify-between py-1">
-              <span className="text-foreground">
-                {c.item.name} × {c.quantity}
-              </span>
-              <span className="font-medium text-foreground">
-                {BOOKING_CONFIG.currencySymbol}{c.item.price * c.quantity}
-              </span>
-            </div>
-          ))}
-          {state.customItems.map((ci, i) => (
-            <div key={i} className="flex justify-between py-1">
-              <span className="text-foreground">{ci.description}</span>
-              <span className="text-muted-foreground text-xs">TBD</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-between text-muted-foreground">
-          <span>Item total</span>
-          <span>{BOOKING_CONFIG.currencySymbol}{itemTotal}</span>
-        </div>
-        {zipPricing.status === "resolved" && (
-          <>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Adjusted item total</span>
-              <span>{BOOKING_CONFIG.currencySymbol}{adjustedItemTotal}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Area minimum</span>
-              <span>{BOOKING_CONFIG.currencySymbol}{zipPricing.minimumPrice}</span>
-            </div>
-            {adjustedItemTotal < (zipPricing.minimumPrice ?? 0) && (
-              <div className="text-xs text-accent flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                Minimum service charge applied for ZIP {zipPricing.zipCode}
-              </div>
-            )}
-          </>
-        )}
-        <div className="border-t border-border pt-3 flex justify-between font-bold text-foreground">
-          <span>{BOOKING_CONFIG.depositMode ? "Deposit Due" : "Final adjusted total"}</span>
-          <span>{BOOKING_CONFIG.currencySymbol}{payableAmount}</span>
-        </div>
+      {/* Mobile-only summary (desktop has right column) */}
+      <div className="md:hidden bg-card border border-border rounded-xl p-4 mb-6 flex justify-between items-center">
+        <span className="text-sm text-muted-foreground">
+          {BOOKING_CONFIG.depositMode ? "Deposit due" : "Total due"}
+        </span>
+        <span className="text-xl font-bold text-foreground">
+          {BOOKING_CONFIG.currencySymbol}{payableAmount}
+        </span>
       </div>
 
       {/* Terms agreement */}

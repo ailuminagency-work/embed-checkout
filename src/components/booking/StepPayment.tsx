@@ -7,8 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CheckCircle2, Loader2, AlertTriangle, XCircle } from "lucide-react";
 import { format } from "date-fns";
+
+type PaymentStatus = "idle" | "processing" | "success" | "error";
 
 export function StepPayment() {
   const {
@@ -16,29 +19,53 @@ export function StepPayment() {
     setPaymentId, setCompleted,
   } = useBooking();
 
-  const [loading, setLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const isProcessing = paymentStatus === "processing";
+  const isDisabled =
+    isProcessing ||
+    !agreedToTerms ||
+    zipPricing.status !== "resolved" ||
+    paymentStatus === "success";
+
   const handleDemoPayment = async () => {
-    setLoading(true);
-    // Simulate payment processing
-    await new Promise((r) => setTimeout(r, 1500));
-    const fakeId = `demo_${Date.now()}`;
-    setPaymentId(fakeId);
-    await supabase.from("booking_pricing_logs").insert({
-      booking_reference: fakeId,
-      zip_code: state.customer.zip,
-      minimum_price: zipPricing.minimumPrice,
-      item_total: adjustedItemTotal,
-      final_price: total,
-    });
-    await sendBookingWebhook(
-      { ...state, paymentId: fakeId },
-      subtotal,
-      total,
-      payableAmount,
-    );
-    setCompleted(true);
-    setLoading(false);
+    // Guard against duplicate submissions
+    if (isProcessing || paymentStatus === "success") return;
+
+    setPaymentStatus("processing");
+    setErrorMessage(null);
+
+    try {
+      // Simulate payment processing
+      await new Promise((r) => setTimeout(r, 1500));
+      const fakeId = `demo_${Date.now()}`;
+      setPaymentId(fakeId);
+
+      const { error: logError } = await supabase.from("booking_pricing_logs").insert({
+        booking_reference: fakeId,
+        zip_code: state.customer.zip,
+        minimum_price: zipPricing.minimumPrice,
+        item_total: adjustedItemTotal,
+        final_price: total,
+      });
+      if (logError) throw new Error(logError.message);
+
+      await sendBookingWebhook(
+        { ...state, paymentId: fakeId },
+        subtotal,
+        total,
+        payableAmount,
+      );
+
+      setPaymentStatus("success");
+      setCompleted(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setErrorMessage(message);
+      setPaymentStatus("error");
+    }
   };
 
   // Success screen
@@ -172,6 +199,7 @@ export function StepPayment() {
           id="terms"
           checked={agreedToTerms}
           onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+          disabled={isProcessing}
           className="mt-0.5"
         />
         <Label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
@@ -183,6 +211,15 @@ export function StepPayment() {
         </Label>
       </div>
 
+      {/* Error state */}
+      {paymentStatus === "error" && errorMessage && (
+        <Alert variant="destructive" className="mb-4">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>Payment failed</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Payment area */}
       {!BOOKING_CONFIG.stripePublishableKey ? (
         <div className="space-y-4">
@@ -192,14 +229,17 @@ export function StepPayment() {
           </div>
           <Button
             onClick={handleDemoPayment}
-            disabled={loading || !agreedToTerms || zipPricing.status !== "resolved"}
+            disabled={isDisabled}
+            aria-busy={isProcessing}
             className="w-full h-12 text-base font-semibold"
           >
-            {loading ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
+                Processing payment...
               </>
+            ) : paymentStatus === "error" ? (
+              `Retry payment`
             ) : (
               `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
             )}
@@ -212,14 +252,17 @@ export function StepPayment() {
           </div>
           <Button
             onClick={handleDemoPayment}
-            disabled={loading || !agreedToTerms || zipPricing.status !== "resolved"}
+            disabled={isDisabled}
+            aria-busy={isProcessing}
             className="w-full h-12 text-base font-semibold"
           >
-            {loading ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
+                Processing payment...
               </>
+            ) : paymentStatus === "error" ? (
+              `Retry payment`
             ) : (
               `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
             )}

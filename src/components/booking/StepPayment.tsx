@@ -169,9 +169,29 @@ export function StepPayment() {
       {/* Payment area */}
       {!BOOKING_CONFIG.stripePublishableKey ? (
         <div className="space-y-4">
-          <div className="bg-muted rounded-xl p-4 text-center text-sm text-muted-foreground">
-            <p className="font-medium text-foreground mb-1">Demo Mode</p>
-            <p>Stripe is not configured. Click below to simulate a payment.</p>
+          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Payment details</h3>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" /> Secure
+              </span>
+            </div>
+            <div className="space-y-3">
+              <div className="h-11 rounded-md border border-dashed border-border bg-muted/40 flex items-center px-3 text-xs text-muted-foreground">
+                Card number •••• •••• •••• ••••
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="h-11 rounded-md border border-dashed border-border bg-muted/40 flex items-center px-3 text-xs text-muted-foreground">
+                  MM / YY
+                </div>
+                <div className="h-11 rounded-md border border-dashed border-border bg-muted/40 flex items-center px-3 text-xs text-muted-foreground">
+                  CVC
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground border-t border-border pt-3">
+              Demo mode — Stripe is not yet connected. Click pay to simulate the booking.
+            </p>
           </div>
           <Button
             onClick={handleDemoPayment}
@@ -193,8 +213,17 @@ export function StepPayment() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-6 min-h-[120px] flex items-center justify-center text-sm text-muted-foreground">
-            Stripe Payment Element will render here
+          <div className="bg-card border border-border rounded-xl p-5 min-h-[160px] space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Payment details</h3>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Lock className="h-3 w-3" /> Powered by Stripe
+              </span>
+            </div>
+            <div className="flex items-center justify-center min-h-[100px] text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Loading secure payment form…
+            </div>
           </div>
           <Button
             onClick={handleDemoPayment}

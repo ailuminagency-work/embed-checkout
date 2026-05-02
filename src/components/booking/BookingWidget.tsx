@@ -8,6 +8,7 @@ import { StepCustomerDetails } from "./StepCustomerDetails";
 import { StepPayment } from "./StepPayment";
 import { OrderSummary } from "./OrderSummary";
 import { MobileBottomBar } from "./MobileBottomBar";
+import { imgStyle } from "@/lib/imageSettings";
 
 function WidgetInner() {
   const booking = useBooking();
@@ -16,13 +17,11 @@ function WidgetInner() {
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden relative">
-      {widgetBg && (
+      {widgetBg?.url && (
         <>
-          <div
-            className="absolute inset-0 bg-cover bg-center pointer-events-none"
-            style={{ backgroundImage: `url(${widgetBg})` }}
-            aria-hidden
-          />
+          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+            <img src={widgetBg.url} alt="" style={imgStyle(widgetBg.settings)} />
+          </div>
           <div
             className="absolute inset-0 bg-background/85 backdrop-blur-sm pointer-events-none"
             aria-hidden

@@ -10,6 +10,12 @@ import {
 } from "@/types/booking";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { defaultCatalog } from "@/data/defaultCatalog";
+import { ImageSettings, parseImageSettings } from "@/lib/imageSettings";
+
+export interface AppImage {
+  url: string | null;
+  settings: ImageSettings;
+}
 
 interface BookingContextValue {
   state: BookingState;
@@ -18,7 +24,7 @@ interface BookingContextValue {
   catalogLoading: boolean;
   zipPricing: ZipPricingResult;
   zipLookupLoading: boolean;
-  appImages: Record<string, string | null>;
+  appImages: Record<string, AppImage>;
   setStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -90,16 +96,16 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [zipPricing, setZipPricing] = useState<ZipPricingResult>(idleZipPricing);
   const [zipLookupLoading, setZipLookupLoading] = useState(false);
-  const [appImages, setAppImages] = useState<Record<string, string | null>>({});
+  const [appImages, setAppImages] = useState<Record<string, AppImage>>({});
 
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const { data } = await supabase.from("app_images").select("key, url");
+      const { data } = await supabase.from("app_images").select("key, url, settings");
       if (!active || !data) return;
-      const map: Record<string, string | null> = {};
-      data.forEach((row: { key: string; url: string | null }) => {
-        map[row.key] = row.url;
+      const map: Record<string, AppImage> = {};
+      data.forEach((row: { key: string; url: string | null; settings: unknown }) => {
+        map[row.key] = { url: row.url, settings: parseImageSettings(row.settings) };
       });
       setAppImages(map);
     };

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Truck, Heart } from "lucide-react";
 import junkRemovalBg from "@/assets/junk-removal-bg.jpg";
 import donationPickupBg from "@/assets/donation-pickup-bg.jpg";
+import { imgStyle, DEFAULT_IMAGE_SETTINGS } from "@/lib/imageSettings";
 
 const baseOptions: { type: ServiceType; title: string; desc: string; Icon: typeof Truck; defaultBg: string; imageKey: string }[] = [
   { type: "junk-removal", title: "Junk Removal", desc: "We haul away your unwanted items quickly and responsibly.", Icon: Truck, defaultBg: junkRemovalBg, imageKey: "junk_removal_card" },
@@ -53,7 +54,9 @@ export function StepServiceType() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {baseOptions.map(({ type, title, desc, Icon, defaultBg, imageKey }) => {
-          const bg = appImages[imageKey] || defaultBg;
+          const custom = appImages[imageKey];
+          const bgUrl = custom?.url || defaultBg;
+          const settings = custom?.url ? custom.settings : DEFAULT_IMAGE_SETTINGS;
           return (
           <button
             key={type}
@@ -73,10 +76,9 @@ export function StepServiceType() {
             )}
           >
             {/* Background image */}
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${bg})` }}
-            />
+            <div className="absolute inset-0 overflow-hidden">
+              <img src={bgUrl} alt="" style={imgStyle(settings)} />
+            </div>
             {/* Dark overlay for text readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
 

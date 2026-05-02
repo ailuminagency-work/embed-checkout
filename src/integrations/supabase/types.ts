@@ -17,16 +17,19 @@ export type Database = {
       app_images: {
         Row: {
           key: string
+          settings: Json
           updated_at: string
           url: string | null
         }
         Insert: {
           key: string
+          settings?: Json
           updated_at?: string
           url?: string | null
         }
         Update: {
           key?: string
+          settings?: Json
           updated_at?: string
           url?: string | null
         }

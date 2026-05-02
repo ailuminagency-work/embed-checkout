@@ -30,12 +30,13 @@ export function parseImageSettings(value: unknown): ImageSettings {
   };
 }
 
-export function imageStyle(settings: ImageSettings): React.CSSProperties {
+export function imgStyle(settings: ImageSettings): React.CSSProperties {
   return {
-    backgroundSize: settings.fit === "contain"
-      ? `${settings.zoom}%`
-      : `${settings.zoom}% auto`,
-    backgroundPosition: `${settings.positionX}% ${settings.positionY}%`,
-    backgroundRepeat: "no-repeat",
+    width: "100%",
+    height: "100%",
+    objectFit: settings.fit,
+    objectPosition: `${settings.positionX}% ${settings.positionY}%`,
+    transform: `scale(${settings.zoom / 100})`,
+    transformOrigin: `${settings.positionX}% ${settings.positionY}%`,
   };
 }

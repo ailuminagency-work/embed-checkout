@@ -128,7 +128,7 @@ export function BrandingManager() {
       const { error: dbErr } = await supabase
         .from("app_images")
         .upsert(
-          { key, url, settings: settings as unknown as Record<string, unknown>, updated_at: new Date().toISOString() },
+          [{ key, url, settings: settings as unknown as Record<string, unknown>, updated_at: new Date().toISOString() }],
           { onConflict: "key" },
         );
       if (dbErr) throw dbErr;
@@ -146,12 +146,14 @@ export function BrandingManager() {
       const { error } = await supabase
         .from("app_images")
         .upsert(
-          {
-            key,
-            url: null,
-            settings: DEFAULT_IMAGE_SETTINGS as unknown as Record<string, unknown>,
-            updated_at: new Date().toISOString(),
-          },
+          [
+            {
+              key,
+              url: null,
+              settings: DEFAULT_IMAGE_SETTINGS as unknown as Record<string, unknown>,
+              updated_at: new Date().toISOString(),
+            },
+          ],
           { onConflict: "key" },
         );
       if (error) throw error;
@@ -175,12 +177,14 @@ export function BrandingManager() {
       const { error } = await supabase
         .from("app_images")
         .upsert(
-          {
-            key,
-            url: slot.url,
-            settings: slot.settings as unknown as Record<string, unknown>,
-            updated_at: new Date().toISOString(),
-          },
+          [
+            {
+              key,
+              url: slot.url,
+              settings: slot.settings as unknown as Record<string, unknown>,
+              updated_at: new Date().toISOString(),
+            },
+          ],
           { onConflict: "key" },
         );
       if (error) throw error;

@@ -1,5 +1,4 @@
 import { AnimatePresence } from "framer-motion";
-import { BOOKING_CONFIG } from "@/config/booking";
 import { BookingProvider, useBooking } from "@/context/BookingContext";
 import { StepIndicator } from "./StepIndicator";
 import { StepServiceType } from "./StepServiceType";
@@ -9,58 +8,55 @@ import { StepCustomerDetails } from "./StepCustomerDetails";
 import { StepPayment } from "./StepPayment";
 import { OrderSummary } from "./OrderSummary";
 import { MobileBottomBar } from "./MobileBottomBar";
-import { Truck } from "lucide-react";
 
 function WidgetInner() {
   const booking = useBooking();
-  const { state } = booking;
+  const { state, appImages } = booking;
+  const widgetBg = appImages.widget_background;
 
   return (
-    <div className="h-full flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      
+    <div className="h-full flex flex-col bg-background overflow-hidden relative">
+      {widgetBg && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center pointer-events-none"
+            style={{ backgroundImage: `url(${widgetBg})` }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-background/85 backdrop-blur-sm pointer-events-none"
+            aria-hidden
+          />
+        </>
+      )}
 
+      <div className="relative z-10 flex flex-col h-full overflow-hidden">
+        {!state.completed && <StepIndicator />}
 
-
-
-
-
-
-
-
-
-      
-
-      {/* Step indicator */}
-      {!state.completed && <StepIndicator />}
-
-      {/* Content area */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Left: Step content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 md:p-6 max-w-2xl">
-            <AnimatePresence mode="wait">
-              {state.step === 0 && <StepServiceType key="step-0" />}
-              {state.step === 1 && <StepItemCatalog key="step-1" />}
-              {state.step === 2 && <StepSchedule key="step-2" />}
-              {state.step === 3 && <StepCustomerDetails key="step-3" />}
-              {state.step === 4 && <StepPayment key="step-4" />}
-            </AnimatePresence>
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4 md:p-6 max-w-2xl">
+              <AnimatePresence mode="wait">
+                {state.step === 0 && <StepServiceType key="step-0" />}
+                {state.step === 1 && <StepItemCatalog key="step-1" />}
+                {state.step === 2 && <StepSchedule key="step-2" />}
+                {state.step === 3 && <StepCustomerDetails key="step-3" />}
+                {state.step === 4 && <StepPayment key="step-4" />}
+              </AnimatePresence>
+            </div>
           </div>
+
+          {!state.completed && (
+            <div className="hidden md:flex w-[340px] border-l border-border flex-col bg-card">
+              <OrderSummary />
+            </div>
+          )}
         </div>
 
-        {/* Right: Sticky summary (desktop only) */}
-        {!state.completed &&
-        <div className="hidden md:flex w-[340px] border-l border-border flex-col bg-card">
-            <OrderSummary />
-          </div>
-        }
+        {!state.completed && <MobileBottomBar />}
       </div>
-
-      {/* Mobile bottom bar */}
-      {!state.completed && <MobileBottomBar />}
-    </div>);
-
+    </div>
+  );
 }
 
 export default function BookingWidget() {

@@ -18,6 +18,7 @@ interface BookingContextValue {
   catalogLoading: boolean;
   zipPricing: ZipPricingResult;
   zipLookupLoading: boolean;
+  appImages: Record<string, string | null>;
   setStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -89,6 +90,29 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [zipPricing, setZipPricing] = useState<ZipPricingResult>(idleZipPricing);
   const [zipLookupLoading, setZipLookupLoading] = useState(false);
+  const [appImages, setAppImages] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const { data } = await supabase.from("app_images").select("key, url");
+      if (!active || !data) return;
+      const map: Record<string, string | null> = {};
+      data.forEach((row: { key: string; url: string | null }) => {
+        map[row.key] = row.url;
+      });
+      setAppImages(map);
+    };
+    load();
+    const channel = supabase
+      .channel("app_images_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "app_images" }, load)
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     setCatalogLoading(true);
@@ -299,6 +323,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     catalogLoading,
     zipPricing,
     zipLookupLoading,
+    appImages,
     setStep,
     nextStep,
     prevStep,

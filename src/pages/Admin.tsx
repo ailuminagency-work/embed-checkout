@@ -7,10 +7,12 @@ import { AdminSidebar, AdminSection } from "@/components/admin/AdminSidebar";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { WebhooksManager } from "@/components/admin/WebhooksManager";
 import { ZipPricingManager } from "@/components/admin/ZipPricingManager";
+import { BrandingManager } from "@/components/admin/BrandingManager";
 
 const sectionTitles: Record<AdminSection, string> = {
   catalog: "Catalog Manager",
   "zip-pricing": "ZIP Pricing Manager",
+  branding: "Branding",
   webhooks: "Webhooks",
 };
 
@@ -48,6 +50,7 @@ export default function Admin() {
         <main className="flex-1 max-w-4xl p-4">
           {section === "catalog" && <CatalogManager />}
           {section === "zip-pricing" && <ZipPricingManager />}
+          {section === "branding" && <BrandingManager />}
           {section === "webhooks" && <WebhooksManager />}
         </main>
       </div>

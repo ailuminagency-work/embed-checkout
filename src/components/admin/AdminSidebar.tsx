@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { Package, Webhook, MapPinned } from "lucide-react";
+import { Package, Webhook, MapPinned, Image as ImageIcon } from "lucide-react";
 
-export type AdminSection = "catalog" | "webhooks" | "zip-pricing";
+export type AdminSection = "catalog" | "webhooks" | "zip-pricing" | "branding";
 
 interface AdminSidebarProps {
   active: AdminSection;
@@ -11,6 +11,7 @@ interface AdminSidebarProps {
 const items: { id: AdminSection; label: string; icon: React.ElementType }[] = [
   { id: "catalog", label: "Catalog", icon: Package },
   { id: "zip-pricing", label: "ZIP Pricing", icon: MapPinned },
+  { id: "branding", label: "Branding", icon: ImageIcon },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
 ];
 

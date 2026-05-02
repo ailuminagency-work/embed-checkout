@@ -8,13 +8,13 @@ import { Truck, Heart } from "lucide-react";
 import junkRemovalBg from "@/assets/junk-removal-bg.jpg";
 import donationPickupBg from "@/assets/donation-pickup-bg.jpg";
 
-const options: { type: ServiceType; title: string; desc: string; Icon: typeof Truck; bg: string }[] = [
-  { type: "junk-removal", title: "Junk Removal", desc: "We haul away your unwanted items quickly and responsibly.", Icon: Truck, bg: junkRemovalBg },
-  { type: "donation-pickup", title: "Donation Pickup", desc: "We pick up items and deliver them to local charities.", Icon: Heart, bg: donationPickupBg },
+const baseOptions: { type: ServiceType; title: string; desc: string; Icon: typeof Truck; defaultBg: string; imageKey: string }[] = [
+  { type: "junk-removal", title: "Junk Removal", desc: "We haul away your unwanted items quickly and responsibly.", Icon: Truck, defaultBg: junkRemovalBg, imageKey: "junk_removal_card" },
+  { type: "donation-pickup", title: "Donation Pickup", desc: "We pick up items and deliver them to local charities.", Icon: Heart, defaultBg: donationPickupBg, imageKey: "donation_pickup_card" },
 ];
 
 export function StepServiceType() {
-  const { state, setServiceType, nextStep, updateCustomer, zipPricing, zipLookupLoading } = useBooking();
+  const { state, setServiceType, nextStep, updateCustomer, zipPricing, zipLookupLoading, appImages } = useBooking();
   const zipReady = zipPricing.status === "resolved";
   const zipBlocked = !!state.customer.zip && !zipReady;
   const zipMessage = zipLookupLoading
@@ -52,7 +52,9 @@ export function StepServiceType() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {options.map(({ type, title, desc, Icon, bg }) => (
+        {baseOptions.map(({ type, title, desc, Icon, defaultBg, imageKey }) => {
+          const bg = appImages[imageKey] || defaultBg;
+          return (
           <button
             key={type}
             type="button"
@@ -87,7 +89,8 @@ export function StepServiceType() {
               <p className="text-sm text-white/80 mt-1 leading-relaxed">{desc}</p>
             </div>
           </button>
-        ))}
+          );
+        })}
       </div>
     </motion.div>
   );

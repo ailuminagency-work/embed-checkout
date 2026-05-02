@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_images: {
+        Row: {
+          key: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       booking_pricing_logs: {
         Row: {
           booking_reference: string | null

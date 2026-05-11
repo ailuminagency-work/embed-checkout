@@ -12,7 +12,7 @@ import { BrandingManager } from "@/components/admin/BrandingManager";
 const sectionTitles: Record<AdminSection, string> = {
   catalog: "Catalog Manager",
   "zip-pricing": "ZIP Pricing Manager",
-  branding: "Branding",
+  branding: "Images",
   webhooks: "Webhooks",
 };
 

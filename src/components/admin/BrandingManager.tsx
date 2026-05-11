@@ -120,9 +120,6 @@ export function BrandingManager() {
   });
   const [loading, setLoading] = useState(true);
 
-  const visibleSlotKey = activeSection === "background" ? "widget_background" : activeCard;
-  const visibleSlot = SLOT_BY_KEY[visibleSlotKey];
-
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.from("app_images").select("key, url, settings");
@@ -315,7 +312,7 @@ export function BrandingManager() {
 
         <TabsContent value="background" className="mt-4">
           <ImageEditor
-            slot={visibleSlot}
+            slot={SLOT_BY_KEY.widget_background}
             state={slots.widget_background}
             onFile={(file) => handleFile("widget_background", file)}
             onRemove={() => handleRemove("widget_background")}
@@ -355,7 +352,7 @@ export function BrandingManager() {
           </div>
 
           <ImageEditor
-            slot={visibleSlot}
+            slot={SLOT_BY_KEY[activeCard]}
             state={slots[activeCard]}
             onFile={(file) => handleFile(activeCard, file)}
             onRemove={() => handleRemove(activeCard)}

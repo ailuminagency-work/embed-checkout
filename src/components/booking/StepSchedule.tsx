@@ -1,19 +1,34 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 import { useBooking } from "@/context/BookingContext";
 import { TimeWindow } from "@/types/booking";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Clock } from "lucide-react";
 
-const TIME_WINDOWS: TimeWindow[] = [
-  { id: "early-morning", label: "8:00 AM – 12:00 AM" },
-  { id: "morning", label: "12:00 AM – 4:00 PM" },
+const FALLBACK_WINDOWS: TimeWindow[] = [
+  { id: "early-morning", label: "8:00 AM – 12:00 PM" },
+  { id: "morning", label: "12:00 PM – 4:00 PM" },
   { id: "afternoon", label: "4:00 PM – 8:00 PM" },
-  
 ];
 
 export function StepSchedule() {
   const { state, setSelectedDate, setSelectedTimeWindow } = useBooking();
+  const [timeWindows, setTimeWindows] = useState<TimeWindow[]>(FALLBACK_WINDOWS);
+
+  useEffect(() => {
+    supabase
+      .from("time_windows")
+      .select("id, label")
+      .eq("active", true)
+      .order("sort_order", { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setTimeWindows(data.map((r) => ({ id: r.id, label: r.label })));
+        }
+      });
+  }, []);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -47,7 +62,7 @@ export function StepSchedule() {
             <span className="text-sm font-medium text-foreground">Time Window</span>
           </div>
           <div className="space-y-2">
-            {TIME_WINDOWS.map((tw) => (
+            {timeWindows.map((tw) => (
               <button
                 key={tw.id}
                 onClick={() => setSelectedTimeWindow(tw)}

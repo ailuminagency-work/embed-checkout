@@ -65,6 +65,33 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          id: string
+          message: string
+          stack: string | null
+          component: string | null
+          context: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          message: string
+          stack?: string | null
+          component?: string | null
+          context?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          message?: string
+          stack?: string | null
+          component?: string | null
+          context?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       catalog_items: {
         Row: {
           active: boolean
@@ -98,6 +125,30 @@ export type Database = {
           price?: number
           sort_order?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      time_windows: {
+        Row: {
+          id: string
+          label: string
+          sort_order: number
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          sort_order?: number
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          sort_order?: number
+          active?: boolean
+          created_at?: string
         }
         Relationships: []
       }

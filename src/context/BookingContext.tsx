@@ -120,39 +120,44 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, []);
 
-  useEffect(() => {
+  const fetchCatalog = useCallback(async () => {
     setCatalogLoading(true);
+    try {
+      if (BOOKING_CONFIG.catalogEndpoint) {
+        const response = await fetch(BOOKING_CONFIG.catalogEndpoint);
+        const data = await response.json();
+        setCatalog(data);
+      } else {
+        const { data, error } = await supabase.functions.invoke("get-catalog");
+        if (error) throw error;
 
-    const fetchCatalog = async () => {
-      try {
-        if (BOOKING_CONFIG.catalogEndpoint) {
-          const response = await fetch(BOOKING_CONFIG.catalogEndpoint);
-          const data = await response.json();
-          setCatalog(data);
+        if (Array.isArray(data)) {
+          const defaultImageMap = new Map(defaultCatalog.map((item) => [item.id, item.imageUrl]));
+          const merged = data.map((item: CatalogItem) => ({
+            ...item,
+            imageUrl: item.imageUrl || defaultImageMap.get(item.id) || undefined,
+          }));
+          setCatalog(merged);
         } else {
-          const { data, error } = await supabase.functions.invoke("get-catalog");
-          if (error) throw error;
-
-          if (Array.isArray(data)) {
-            const defaultImageMap = new Map(defaultCatalog.map((item) => [item.id, item.imageUrl]));
-            const merged = data.map((item: CatalogItem) => ({
-              ...item,
-              imageUrl: item.imageUrl || defaultImageMap.get(item.id) || undefined,
-            }));
-            setCatalog(merged);
-          } else {
-            setCatalog(defaultCatalog);
-          }
+          setCatalog(defaultCatalog);
         }
-      } catch {
-        setCatalog(defaultCatalog);
-      } finally {
-        setCatalogLoading(false);
       }
-    };
-
-    fetchCatalog();
+    } catch {
+      setCatalog(defaultCatalog);
+    } finally {
+      setCatalogLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchCatalog(); }, [fetchCatalog]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("catalog_items_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "catalog_items" }, fetchCatalog)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchCatalog]);
 
   useEffect(() => {
     const zipCode = normalizeZip(state.customer.zip);
@@ -300,7 +305,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       case 0:
         return !!state.serviceType && zipReady;
       case 1:
-        return state.cart.length > 0 && (state.customer.photos.length > 0 || state.skipPhotos) && zipReady;
+        return (state.cart.length > 0 || state.customItems.length > 0) && (state.customer.photos.length > 0 || state.skipPhotos) && zipReady;
       case 2:
         return !!state.selectedDate && !!state.selectedTimeWindow && zipReady;
       case 3: {

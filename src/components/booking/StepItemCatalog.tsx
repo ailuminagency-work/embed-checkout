@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion } from "framer-motion";
 import { useBooking } from "@/context/BookingContext";
@@ -7,10 +7,14 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import {
   Search, Plus, Minus, X, Camera,
   Sofa, Refrigerator, Monitor, TreePine, Package,
 } from "lucide-react";
+
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 const categoryIcons: Record<string, typeof Sofa> = {
   Furniture: Sofa,
@@ -26,6 +30,7 @@ export function StepItemCatalog() {
     addToCart, updateQuantity, addCustomItem, removeCustomItem,
     updateCustomer, setSkipPhotos,
   } = useBooking();
+  const { toast } = useToast();
   const c = state.customer;
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -33,6 +38,13 @@ export function StepItemCatalog() {
   const [search, setSearch] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [customDesc, setCustomDesc] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    const urls = c.photos.map((f) => URL.createObjectURL(f));
+    setPhotoUrls(urls);
+    return () => { urls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [c.photos]);
 
   const filtered = useMemo(() => {
     let items = catalog;
@@ -116,7 +128,7 @@ export function StepItemCatalog() {
                   <div className="relative z-10 p-3 pt-8">
                     <p className="text-xs font-medium text-white truncate text-center">{item.name}</p>
                     <p className="text-xs font-bold text-white/90 text-center mt-0.5">
-                      {BOOKING_CONFIG.currencySymbol}{item.price}
+                      {BOOKING_CONFIG.currencySymbol}{item.price.toFixed(2)}
                     </p>
                     <div className="flex items-center justify-center gap-1.5 mt-2">
                       {qty > 0 ? (
@@ -257,9 +269,25 @@ export function StepItemCatalog() {
           multiple
           className="hidden"
           onChange={(e) => {
-            if (e.target.files) {
-              updateCustomer({ photos: [...c.photos, ...Array.from(e.target.files)] });
+            if (!e.target.files) return;
+            const valid: File[] = [];
+            const rejected: string[] = [];
+            Array.from(e.target.files).forEach((file) => {
+              if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+                rejected.push(`${file.name}: unsupported format (use JPEG, PNG, or WEBP)`);
+              } else if (file.size > MAX_PHOTO_BYTES) {
+                rejected.push(`${file.name}: exceeds 10 MB limit`);
+              } else {
+                valid.push(file);
+              }
+            });
+            if (rejected.length > 0) {
+              toast({ variant: "destructive", title: "Some photos skipped", description: rejected.join(" · ") });
             }
+            if (valid.length > 0) {
+              updateCustomer({ photos: [...c.photos, ...valid] });
+            }
+            e.target.value = "";
           }}
         />
         <button
@@ -271,9 +299,9 @@ export function StepItemCatalog() {
         </button>
         {c.photos.length > 0 && (
           <div className="flex gap-2 mt-3 flex-wrap">
-            {c.photos.map((f, i) => (
+            {c.photos.map((_, i) => (
               <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden border border-border">
-                <img src={URL.createObjectURL(f)} alt="" className="h-full w-full object-cover" />
+                <img src={photoUrls[i]} alt="" className="h-full w-full object-cover" />
                 <button
                   onClick={() =>
                     updateCustomer({ photos: c.photos.filter((_, idx) => idx !== i) })

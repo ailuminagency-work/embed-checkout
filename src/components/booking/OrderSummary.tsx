@@ -26,7 +26,7 @@ export function OrderSummary() {
             <div>
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Service</span>
               <p className="text-foreground font-medium capitalize mt-0.5">
-                {state.serviceType.replace("-", " ")}
+                {state.serviceType.replaceAll("-", " ")}
               </p>
             </div>
           )}
@@ -45,7 +45,7 @@ export function OrderSummary() {
                       )}
                     </span>
                     <span className="font-medium text-foreground tabular-nums">
-                      {BOOKING_CONFIG.currencySymbol}{c.item.price * c.quantity}
+                      {BOOKING_CONFIG.currencySymbol}{(c.item.price * c.quantity).toFixed(2)}
                     </span>
                   </div>
                 ))}
@@ -93,7 +93,7 @@ export function OrderSummary() {
           <div className="space-y-1 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Item total</span>
-              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{itemTotal}</span>
+              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{itemTotal.toFixed(2)}</span>
             </div>
             {photoPromoDiscount > 0 && (
               <div className="flex justify-between text-success">
@@ -101,18 +101,18 @@ export function OrderSummary() {
                   <Tag className="h-3 w-3" />
                   Photo promo ({BOOKING_CONFIG.photoPromoPercent}% off)
                 </span>
-                <span className="tabular-nums">-{BOOKING_CONFIG.currencySymbol}{photoPromoDiscount}</span>
+                <span className="tabular-nums">-{BOOKING_CONFIG.currencySymbol}{photoPromoDiscount.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between text-muted-foreground">
               <span>Adjusted item total</span>
-              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{adjustedItemTotal}</span>
+              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{adjustedItemTotal.toFixed(2)}</span>
             </div>
             {zipPricing.status === "resolved" && (
               <>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Area minimum</span>
-                  <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{zipPricing.minimumPrice}</span>
+                  <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{zipPricing.minimumPrice?.toFixed(2)}</span>
                 </div>
                 {adjustedItemTotal < (zipPricing.minimumPrice ?? 0) && (
                   <div className="flex items-center gap-1 text-xs text-accent">
@@ -130,7 +130,7 @@ export function OrderSummary() {
             )}
             <div className="flex justify-between font-bold text-foreground">
               <span>{BOOKING_CONFIG.depositMode ? "Deposit" : "Final adjusted total"}</span>
-              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{payableAmount}</span>
+              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{payableAmount.toFixed(2)}</span>
             </div>
           </div>
         )}

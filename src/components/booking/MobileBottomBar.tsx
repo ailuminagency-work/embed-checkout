@@ -19,7 +19,7 @@ export function MobileBottomBar() {
           <div>
             <p className="text-xs text-muted-foreground">{BOOKING_CONFIG.depositMode ? "Deposit" : "Final total"}</p>
             <p className="text-lg font-bold text-foreground tabular-nums leading-tight">
-              {BOOKING_CONFIG.currencySymbol}{payableAmount}
+              {BOOKING_CONFIG.currencySymbol}{payableAmount.toFixed(2)}
             </p>
             {zipPricing.status !== "resolved" && state.customer.zip && (
               <p className="text-[11px] text-destructive truncate">{zipPricing.message}</p>

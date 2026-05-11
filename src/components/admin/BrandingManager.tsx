@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -107,6 +107,9 @@ const toImageSettingsJson = (settings: ImageSettings): Json => ({
   zoom: settings.zoom,
 });
 
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Something went wrong. Please try again.";
 
@@ -120,7 +123,7 @@ export function BrandingManager() {
   });
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("app_images").select("key, url, settings");
     if (error) {
@@ -142,11 +145,11 @@ export function BrandingManager() {
       });
     }
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const statusCounts = useMemo(() => {
     const backgroundReady = slots.widget_background.url ? 1 : 0;
@@ -176,8 +179,12 @@ export function BrandingManager() {
   };
 
   const handleFile = async (key: ImageKey, file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Please choose an image file", variant: "destructive" });
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast({ title: "Unsupported file type", description: "Please use JPEG, PNG, or WEBP.", variant: "destructive" });
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      toast({ title: "File too large", description: "Maximum file size is 10 MB.", variant: "destructive" });
       return;
     }
     updateSlot(key, { uploading: true });

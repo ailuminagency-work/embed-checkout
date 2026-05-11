@@ -46,11 +46,12 @@ export function WebhooksManager() {
       .from("webhook_settings")
       .select("*")
       .limit(1)
-      .single();
+      .maybeSingle();
     if (error) {
       toast({ variant: "destructive", title: "Error loading settings", description: error.message });
       return;
     }
+    if (!data) return;
     setSettings(data);
     setTestUrl(data.test_url);
     setLiveUrl(data.live_url);
@@ -126,8 +127,8 @@ export function WebhooksManager() {
       statusCode = res.status;
       success = res.ok;
       if (!res.ok) errorMessage = `HTTP ${res.status} ${res.statusText}`;
-    } catch (e: any) {
-      errorMessage = e?.message || "Network error";
+    } catch (e: unknown) {
+      errorMessage = e instanceof Error ? e.message : "Network error";
     }
 
     // Log the result

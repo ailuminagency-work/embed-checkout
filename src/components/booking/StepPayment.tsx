@@ -4,6 +4,7 @@ import { useBooking } from "@/context/BookingContext";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { sendBookingWebhook } from "@/utils/webhook";
 import { supabase } from "@/integrations/supabase/client";
+import { StripePaymentForm } from "./StripePaymentForm";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -24,36 +25,28 @@ export function StepPayment() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const isProcessing = paymentStatus === "processing";
-  const isDisabled =
-    isProcessing ||
-    !agreedToTerms ||
-    zipPricing.status !== "resolved" ||
-    paymentStatus === "success";
+  const isSuccess = paymentStatus === "success";
+  const formDisabled = isProcessing || isSuccess || !agreedToTerms || zipPricing.status !== "resolved";
 
-  const handleDemoPayment = async () => {
-    // Guard against duplicate submissions
-    if (isProcessing || paymentStatus === "success") return;
-
+  // Shared post-payment logic used by both demo and Stripe paths
+  const handlePaymentSuccess = async (paymentId: string) => {
     setPaymentStatus("processing");
     setErrorMessage(null);
 
     try {
-      // Simulate payment processing
-      await new Promise((r) => setTimeout(r, 1500));
-      const fakeId = `demo_${Date.now()}`;
-      setPaymentId(fakeId);
+      setPaymentId(paymentId);
 
       const { error: logError } = await supabase.from("booking_pricing_logs").insert({
-        booking_reference: fakeId,
+        booking_reference: paymentId,
         zip_code: state.customer.zip,
         minimum_price: zipPricing.minimumPrice,
         item_total: adjustedItemTotal,
         final_price: total,
       });
-      if (logError) throw new Error(logError.message);
+      if (logError) console.error("[BookingLog] Failed to write pricing log:", logError.message);
 
       await sendBookingWebhook(
-        { ...state, paymentId: fakeId },
+        { ...state, paymentId },
         subtotal,
         total,
         payableAmount,
@@ -66,6 +59,17 @@ export function StepPayment() {
       setErrorMessage(message);
       setPaymentStatus("error");
     }
+  };
+
+  const handlePaymentError = (message: string) => {
+    setErrorMessage(message);
+    setPaymentStatus("error");
+  };
+
+  // Demo path — no Stripe key configured
+  const handleDemoPayment = async () => {
+    if (isProcessing || isSuccess) return;
+    await handlePaymentSuccess(`demo_${Date.now()}`);
   };
 
   // Success screen
@@ -90,7 +94,7 @@ export function StepPayment() {
           <div className="flex justify-between">
             <span className="text-muted-foreground">Service</span>
             <span className="font-medium text-foreground capitalize">
-              {state.serviceType?.replace("-", " ")}
+              {state.serviceType?.replaceAll("-", " ")}
             </span>
           </div>
           <div className="flex justify-between">
@@ -102,7 +106,7 @@ export function StepPayment() {
               {BOOKING_CONFIG.depositMode ? "Deposit Paid" : "Total Paid"}
             </span>
             <span className="font-bold text-foreground">
-              {BOOKING_CONFIG.currencySymbol}{payableAmount}
+              {BOOKING_CONFIG.currencySymbol}{payableAmount.toFixed(2)}
             </span>
           </div>
           {state.paymentId && (
@@ -114,6 +118,10 @@ export function StepPayment() {
       </motion.div>
     );
   }
+
+  // Amount in cents for Stripe (payableAmount is already in dollars)
+  const amountCents = Math.round(payableAmount * 100);
+  const bookingReference = `booking_${Date.now()}`;
 
   return (
     <motion.div
@@ -135,7 +143,7 @@ export function StepPayment() {
           {BOOKING_CONFIG.depositMode ? "Deposit due" : "Total due"}
         </span>
         <span className="text-xl font-bold text-foreground">
-          {BOOKING_CONFIG.currencySymbol}{payableAmount}
+          {BOOKING_CONFIG.currencySymbol}{payableAmount.toFixed(2)}
         </span>
       </div>
 
@@ -167,15 +175,25 @@ export function StepPayment() {
       )}
 
       {/* Payment area */}
-      {!BOOKING_CONFIG.stripePublishableKey ? (
-        <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Payment details</h3>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Lock className="h-3 w-3" /> Secure
-              </span>
-            </div>
+      <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Payment details</h3>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Lock className="h-3 w-3" />
+            {BOOKING_CONFIG.stripePublishableKey ? "Powered by Stripe" : "Secure"}
+          </span>
+        </div>
+
+        {BOOKING_CONFIG.stripePublishableKey ? (
+          <StripePaymentForm
+            amountCents={amountCents}
+            bookingReference={bookingReference}
+            disabled={formDisabled}
+            onSuccess={handlePaymentSuccess}
+            onError={handlePaymentError}
+          />
+        ) : (
+          <>
             <div className="space-y-3">
               <div className="h-11 rounded-md border border-dashed border-border bg-muted/40 flex items-center px-3 text-xs text-muted-foreground">
                 Card number •••• •••• •••• ••••
@@ -190,60 +208,25 @@ export function StepPayment() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground border-t border-border pt-3">
-              Demo mode — Stripe is not yet connected. Click pay to simulate the booking.
+              Demo mode — add <code className="font-mono">VITE_STRIPE_PUBLISHABLE_KEY</code> to enable real payments.
             </p>
-          </div>
-          <Button
-            onClick={handleDemoPayment}
-            disabled={isDisabled}
-            aria-busy={isProcessing}
-            className="w-full h-12 text-base font-semibold"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing payment...
-              </>
-            ) : paymentStatus === "error" ? (
-              `Retry payment`
-            ) : (
-              `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
-            )}
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-5 min-h-[160px] space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Payment details</h3>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Lock className="h-3 w-3" /> Powered by Stripe
-              </span>
-            </div>
-            <div className="flex items-center justify-center min-h-[100px] text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Loading secure payment form…
-            </div>
-          </div>
-          <Button
-            onClick={handleDemoPayment}
-            disabled={isDisabled}
-            aria-busy={isProcessing}
-            className="w-full h-12 text-base font-semibold"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing payment...
-              </>
-            ) : paymentStatus === "error" ? (
-              `Retry payment`
-            ) : (
-              `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
-            )}
-          </Button>
-        </div>
-      )}
+            <Button
+              onClick={handleDemoPayment}
+              disabled={formDisabled}
+              aria-busy={isProcessing}
+              className="w-full h-12 text-base font-semibold"
+            >
+              {isProcessing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing payment…</>
+              ) : paymentStatus === "error" ? (
+                "Retry payment"
+              ) : (
+                `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount.toFixed(2)}`
+              )}
+            </Button>
+          </>
+        )}
+      </div>
     </motion.div>
   );
 }

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { Package, Webhook, MapPinned, Image as ImageIcon } from "lucide-react";
+import { Package, Webhook, MapPinned, Image as ImageIcon, Clock, BarChart2 } from "lucide-react";
 
-export type AdminSection = "catalog" | "webhooks" | "zip-pricing" | "branding";
+export type AdminSection = "catalog" | "webhooks" | "zip-pricing" | "branding" | "time-windows" | "analytics";
 
 interface AdminSidebarProps {
   active: AdminSection;
@@ -11,8 +11,10 @@ interface AdminSidebarProps {
 const items: { id: AdminSection; label: string; icon: React.ElementType }[] = [
   { id: "catalog", label: "Catalog", icon: Package },
   { id: "zip-pricing", label: "ZIP Pricing", icon: MapPinned },
+  { id: "time-windows", label: "Time Windows", icon: Clock },
   { id: "branding", label: "Images", icon: ImageIcon },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
+  { id: "analytics", label: "Analytics", icon: BarChart2 },
 ];
 
 export function AdminSidebar({ active, onSelect }: AdminSidebarProps) {

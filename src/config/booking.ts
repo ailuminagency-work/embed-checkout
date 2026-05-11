@@ -62,5 +62,5 @@ export const BOOKING_CONFIG = {
 
   /** Stripe publishable key — required for live payments.
    *  Leave empty for demo / simulation mode. */
-  stripePublishableKey: "",
+  stripePublishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "",
 };

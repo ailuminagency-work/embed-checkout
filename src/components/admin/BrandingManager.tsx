@@ -22,6 +22,7 @@ import {
   parseImageSettings,
 } from "@/lib/imageSettings";
 import { cn } from "@/lib/utils";
+import type { Json } from "@/integrations/supabase/types";
 
 type ImageKey = "widget_background" | "junk_removal_card" | "donation_pickup_card";
 type SectionKey = "background" | "cards";
@@ -98,6 +99,16 @@ const safeFileName = (name: string) =>
     .replace(/[^a-z0-9.]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "") || "image.jpg";
+
+const toImageSettingsJson = (settings: ImageSettings): Json => ({
+  fit: settings.fit,
+  positionX: settings.positionX,
+  positionY: settings.positionY,
+  zoom: settings.zoom,
+});
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Something went wrong. Please try again.";
 
 export function BrandingManager() {
   const [activeSection, setActiveSection] = useState<SectionKey>("background");

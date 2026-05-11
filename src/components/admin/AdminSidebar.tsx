@@ -11,7 +11,7 @@ interface AdminSidebarProps {
 const items: { id: AdminSection; label: string; icon: React.ElementType }[] = [
   { id: "catalog", label: "Catalog", icon: Package },
   { id: "zip-pricing", label: "ZIP Pricing", icon: MapPinned },
-  { id: "branding", label: "Branding", icon: ImageIcon },
+  { id: "branding", label: "Images", icon: ImageIcon },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
 ];
 

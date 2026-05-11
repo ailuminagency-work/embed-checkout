@@ -200,7 +200,7 @@ export function BrandingManager() {
       const { error: dbErr } = await supabase
         .from("app_images")
         .upsert(
-          [{ key, url, settings: settings as any, updated_at: new Date().toISOString() }],
+          [{ key, url, settings: toImageSettingsJson(settings), updated_at: new Date().toISOString() }],
           { onConflict: "key" },
         );
       if (dbErr) throw dbErr;
@@ -208,10 +208,10 @@ export function BrandingManager() {
       await removeStorageFile(previousUrl);
       updateSlot(key, { url, settings, dirty: false, uploading: false });
       toast({ title: "Image saved" });
-    } catch (e: any) {
+    } catch (e: unknown) {
       await supabase.storage.from("app-images").remove([path]);
       updateSlot(key, { uploading: false });
-      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+      toast({ title: "Upload failed", description: getErrorMessage(e), variant: "destructive" });
     }
   };
 
@@ -226,7 +226,7 @@ export function BrandingManager() {
             {
               key,
               url: null,
-              settings: DEFAULT_IMAGE_SETTINGS as any,
+              settings: toImageSettingsJson(DEFAULT_IMAGE_SETTINGS),
               updated_at: new Date().toISOString(),
             },
           ],
@@ -242,9 +242,9 @@ export function BrandingManager() {
         saving: false,
       });
       toast({ title: "Image deleted" });
-    } catch (e: any) {
+    } catch (e: unknown) {
       updateSlot(key, { saving: false });
-      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+      toast({ title: "Delete failed", description: getErrorMessage(e), variant: "destructive" });
     }
   };
 
@@ -259,7 +259,7 @@ export function BrandingManager() {
             {
               key,
               url: slot.url,
-              settings: slot.settings as any,
+              settings: toImageSettingsJson(slot.settings),
               updated_at: new Date().toISOString(),
             },
           ],
@@ -268,9 +268,9 @@ export function BrandingManager() {
       if (error) throw error;
       updateSlot(key, { dirty: false, saving: false });
       toast({ title: "Crop saved" });
-    } catch (e: any) {
+    } catch (e: unknown) {
       updateSlot(key, { saving: false });
-      toast({ title: "Save failed", description: e.message, variant: "destructive" });
+      toast({ title: "Save failed", description: getErrorMessage(e), variant: "destructive" });
     }
   };
 

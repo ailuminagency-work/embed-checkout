@@ -6,10 +6,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Clock } from "lucide-react";
 
 const TIME_WINDOWS: TimeWindow[] = [
-  { id: "early-morning", label: "8:00 AM – 12:00 AM" },
-  { id: "morning", label: "12:00 AM – 4:00 PM" },
-  { id: "afternoon", label: "4:00 PM – 8:00 PM" },
-  
+  { id: "morning", label: "8:00 AM – 12:00 PM" },
+  { id: "afternoon", label: "12:00 PM – 4:00 PM" },
+  { id: "evening", label: "4:00 PM – 8:00 PM" },
 ];
 
 export function StepSchedule() {

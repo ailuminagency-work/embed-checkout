@@ -8,8 +8,11 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!active) return;
         const u = session?.user ?? null;
         setUser(u);
         if (u) {
@@ -19,15 +22,16 @@ export function useAuth() {
             .eq("user_id", u.id)
             .eq("role", "admin")
             .maybeSingle();
-          setIsAdmin(!!data);
+          if (active) setIsAdmin(!!data);
         } else {
           setIsAdmin(false);
         }
-        setLoading(false);
+        if (active) setLoading(false);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!active) return;
       const u = session?.user ?? null;
       setUser(u);
       if (u) {
@@ -38,6 +42,7 @@ export function useAuth() {
           .eq("role", "admin")
           .maybeSingle()
           .then(({ data }) => {
+            if (!active) return;
             setIsAdmin(!!data);
             setLoading(false);
           });
@@ -46,7 +51,10 @@ export function useAuth() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = () => supabase.auth.signOut();

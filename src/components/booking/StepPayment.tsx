@@ -50,7 +50,7 @@ export function StepPayment() {
         item_total: adjustedItemTotal,
         final_price: total,
       });
-      if (logError) throw new Error(logError.message);
+      if (logError) console.warn("[Booking] Pricing log failed (non-blocking):", logError.message);
 
       await sendBookingWebhook(
         { ...state, paymentId: fakeId },

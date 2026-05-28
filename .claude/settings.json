@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git *)",
+            "command": "(cmd=$(jq -r '.tool_input.command // \"\"'); echo \"$cmd\" | grep -qE 'git.*commit' && cd /home/claude/embed-checkout && git push -u origin main) 2>/dev/null || true",
+            "statusMessage": "Pushing to GitHub…",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

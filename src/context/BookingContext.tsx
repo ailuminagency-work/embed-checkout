@@ -71,6 +71,43 @@ const idleZipPricing: ZipPricingResult = {
   message: "Enter your ZIP code to confirm pricing before checkout.",
 };
 
+const STORAGE_KEY = 'booking_draft_v1';
+
+const loadDraft = (): Partial<BookingState> | null => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Restore selectedDate from ISO string back to Date object
+    if (parsed.selectedDate) {
+      parsed.selectedDate = new Date(parsed.selectedDate);
+    }
+    // Always start with empty photos since File objects can't be serialized
+    if (parsed.customer) {
+      parsed.customer.photos = [];
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const saveDraft = (state: BookingState) => {
+  try {
+    const serializable = {
+      ...state,
+      selectedDate: state.selectedDate ? state.selectedDate.toISOString() : null,
+      customer: {
+        ...state.customer,
+        photos: [], // skip File objects
+      },
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+  } catch {
+    // Ignore serialization errors
+  }
+};
+
 export const useBooking = () => {
   const ctx = useContext(BookingContext);
   if (!ctx) throw new Error("useBooking must be used within BookingProvider");
@@ -80,23 +117,36 @@ export const useBooking = () => {
 const normalizeZip = (zip: string) => zip.trim();
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<BookingState>({
-    step: 0,
-    serviceType: null,
-    cart: [],
-    customItems: [],
-    selectedDate: null,
-    selectedTimeWindow: null,
-    customer: emptyCustomer,
-    paymentId: null,
-    completed: false,
-    skipPhotos: false,
+  const [state, setState] = useState<BookingState>(() => {
+    const draft = loadDraft();
+    return {
+      step: 0,
+      serviceType: null,
+      cart: [],
+      customItems: [],
+      selectedDate: null,
+      selectedTimeWindow: null,
+      customer: emptyCustomer,
+      paymentId: null,
+      completed: false,
+      skipPhotos: false,
+      ...draft,
+    };
   });
   const [catalog, setCatalog] = useState<CatalogItem[]>(defaultCatalog);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [zipPricing, setZipPricing] = useState<ZipPricingResult>(idleZipPricing);
   const [zipLookupLoading, setZipLookupLoading] = useState(false);
   const [appImages, setAppImages] = useState<Record<string, AppImage>>({});
+
+  // Persist draft to localStorage after every state change
+  useEffect(() => {
+    if (state.completed) {
+      localStorage.removeItem(STORAGE_KEY);
+    } else {
+      saveDraft(state);
+    }
+  }, [state]);
 
   useEffect(() => {
     let active = true;

@@ -8,18 +8,24 @@ import { CatalogManager } from "@/components/admin/CatalogManager";
 import { WebhooksManager } from "@/components/admin/WebhooksManager";
 import { ZipPricingManager } from "@/components/admin/ZipPricingManager";
 import { BrandingManager } from "@/components/admin/BrandingManager";
+import { BookingsManager } from "@/components/admin/BookingsManager";
+import { ThemeManager } from "@/components/admin/ThemeManager";
+import { DateBlockingManager } from "@/components/admin/DateBlockingManager";
 
 const sectionTitles: Record<AdminSection, string> = {
-  catalog: "Catalog Manager",
-  "zip-pricing": "ZIP Pricing Manager",
+  bookings: "Bookings",
+  catalog: "Catalog",
+  "zip-pricing": "ZIP Pricing",
   branding: "Images",
+  theme: "Theme & Branding",
+  dates: "Date Blocking",
   webhooks: "Webhooks",
 };
 
 export default function Admin() {
   const { user, isAdmin, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [section, setSection] = useState<AdminSection>("catalog");
+  const [section, setSection] = useState<AdminSection>("bookings");
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) navigate("/login");
@@ -47,11 +53,14 @@ export default function Admin() {
 
       <div className="flex">
         <AdminSidebar active={section} onSelect={setSection} />
-        <main className="flex-1 max-w-4xl p-4">
-          {section === "catalog" && <CatalogManager />}
+        <main className="flex-1 max-w-5xl p-6">
+          {section === "bookings"    && <BookingsManager />}
+          {section === "catalog"     && <CatalogManager />}
           {section === "zip-pricing" && <ZipPricingManager />}
-          {section === "branding" && <BrandingManager />}
-          {section === "webhooks" && <WebhooksManager />}
+          {section === "dates"       && <DateBlockingManager />}
+          {section === "theme"       && <ThemeManager />}
+          {section === "branding"    && <BrandingManager />}
+          {section === "webhooks"    && <WebhooksManager />}
         </main>
       </div>
     </div>

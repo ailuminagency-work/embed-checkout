@@ -5,6 +5,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Home, Building2, Briefcase, Building } from "lucide-react";
 
+const formatPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+};
+
 export function StepCustomerDetails() {
   const { state, updateCustomer, zipPricing, zipLookupLoading } = useBooking();
   const c = state.customer;
@@ -40,8 +47,9 @@ export function StepCustomerDetails() {
             <Input
               id="phone"
               type="tel"
+              inputMode="tel"
               value={c.phone}
-              onChange={(e) => updateCustomer({ phone: e.target.value })}
+              onChange={(e) => updateCustomer({ phone: formatPhone(e.target.value) })}
               placeholder="(555) 123-4567"
               className="mt-1 bg-card"
             />

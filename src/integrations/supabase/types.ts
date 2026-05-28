@@ -101,6 +101,132 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          key: string
+          value: string | null
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      blocked_dates: {
+        Row: {
+          id: string
+          date: string
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          reason?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      bookings: {
+        Row: {
+          id: string
+          reference: string
+          service_type: string
+          status: string
+          customer_name: string | null
+          customer_email: string | null
+          customer_phone: string | null
+          customer_address: string | null
+          customer_address2: string | null
+          customer_zip: string | null
+          customer_property_type: string | null
+          customer_gate_code: string | null
+          schedule_date: string | null
+          schedule_time_window: string | null
+          items: Json
+          custom_items: Json
+          item_total: number
+          photo_promo_discount: number
+          adjusted_item_total: number
+          minimum_price: number | null
+          final_total: number
+          amount_charged: number
+          deposit_mode: boolean
+          payment_id: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          reference: string
+          service_type: string
+          status?: string
+          customer_name?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
+          customer_address?: string | null
+          customer_address2?: string | null
+          customer_zip?: string | null
+          customer_property_type?: string | null
+          customer_gate_code?: string | null
+          schedule_date?: string | null
+          schedule_time_window?: string | null
+          items?: Json
+          custom_items?: Json
+          item_total?: number
+          photo_promo_discount?: number
+          adjusted_item_total?: number
+          minimum_price?: number | null
+          final_total?: number
+          amount_charged?: number
+          deposit_mode?: boolean
+          payment_id?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          reference?: string
+          service_type?: string
+          status?: string
+          customer_name?: string | null
+          customer_email?: string | null
+          customer_phone?: string | null
+          customer_address?: string | null
+          customer_address2?: string | null
+          customer_zip?: string | null
+          customer_property_type?: string | null
+          customer_gate_code?: string | null
+          schedule_date?: string | null
+          schedule_time_window?: string | null
+          items?: Json
+          custom_items?: Json
+          item_total?: number
+          photo_promo_discount?: number
+          adjusted_item_total?: number
+          minimum_price?: number | null
+          final_total?: number
+          amount_charged?: number
+          deposit_mode?: boolean
+          payment_id?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       error_logs: {
         Row: {
           component: string | null

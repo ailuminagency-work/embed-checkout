@@ -4,6 +4,8 @@ import { TimeWindow } from "@/types/booking";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const TIME_WINDOWS: TimeWindow[] = [
   { id: "morning", label: "8:00 AM – 12:00 PM" },
@@ -13,9 +15,16 @@ const TIME_WINDOWS: TimeWindow[] = [
 
 export function StepSchedule() {
   const { state, setSelectedDate, setSelectedTimeWindow } = useBooking();
+  const [blockedDates, setBlockedDates] = useState<Date[]>([]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  useEffect(() => {
+    supabase.from("blocked_dates").select("date").then(({ data }) => {
+      if (data) setBlockedDates(data.map(r => new Date(r.date + 'T00:00:00')));
+    });
+  }, []);
 
   return (
     <motion.div
@@ -29,14 +38,24 @@ export function StepSchedule() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Calendar */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <Calendar
             mode="single"
             selected={state.selectedDate ?? undefined}
             onSelect={(date) => setSelectedDate(date ?? null)}
-            disabled={(date) => date < today}
+            disabled={(date) => {
+              if (date < today) return true;
+              return blockedDates.some(b =>
+                b.getFullYear() === date.getFullYear() &&
+                b.getMonth() === date.getMonth() &&
+                b.getDate() === date.getDate()
+              );
+            }}
             className="rounded-xl border border-border bg-card p-3 pointer-events-auto"
           />
+          {blockedDates.length > 0 && (
+            <p className="text-xs text-muted-foreground">Some dates unavailable</p>
+          )}
         </div>
 
         {/* Time windows */}

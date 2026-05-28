@@ -10,11 +10,13 @@ import Admin from "./pages/Admin";
 import Embed from "./pages/Embed";
 import Terms from "./pages/Terms";
 import CancellationPolicy from "./pages/CancellationPolicy";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -30,6 +32,7 @@ const App = () => (
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

@@ -101,6 +101,57 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          component: string | null
+          context: string | null
+          created_at: string
+          id: string
+          message: string
+          stack: string | null
+        }
+        Insert: {
+          component?: string | null
+          context?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          stack?: string | null
+        }
+        Update: {
+          component?: string | null
+          context?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          stack?: string | null
+        }
+        Relationships: []
+      }
+      time_windows: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

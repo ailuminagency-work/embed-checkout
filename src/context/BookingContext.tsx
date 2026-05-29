@@ -224,7 +224,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
 
+    let cancelled = false;
     const timer = window.setTimeout(async () => {
+      if (cancelled) return;
       setZipLookupLoading(true);
 
       const { data: row, error } = await supabase
@@ -233,6 +235,8 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq("zip_code", zipCode)
         .eq("active", true)
         .maybeSingle();
+
+      if (cancelled) return;
 
       if (error || !row) {
         setZipPricing({
@@ -254,7 +258,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setZipLookupLoading(false);
     }, 250);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [state.customer.zip]);
 
   const categories = useMemo(() => [...new Set(catalog.map((item) => item.category))], [catalog]);

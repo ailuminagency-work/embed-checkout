@@ -6,6 +6,8 @@ import { useBooking } from "@/context/BookingContext";
 import { BOOKING_CONFIG } from "@/config/booking";
 import { sendBookingWebhook } from "@/utils/webhook";
 import { supabase } from "@/integrations/supabase/client";
+import { createBooking } from "@/api";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -26,8 +28,8 @@ async function saveBooking(
   total: number,
   payableAmount: number,
   minimumPrice: number | null,
-) {
-  const { error } = await supabase.from("bookings").insert({
+): Promise<boolean> {
+  const result = await createBooking({
     reference: paymentId,
     service_type: state.serviceType ?? "unknown",
     status: "confirmed",
@@ -59,7 +61,7 @@ async function saveBooking(
     payment_id: paymentId,
     notes: state.customer.notes || null,
   });
-  if (error) console.warn("[Booking] DB save failed (non-blocking):", error.message);
+  return result !== null;
 }
 
 // ── send confirmation email ────────────────────────────────────────────────────
@@ -269,6 +271,7 @@ export function StepPayment() {
     photoPromoDiscount, itemTotal, zipPricing,
     setPaymentId, setCompleted,
   } = useBooking();
+  const { toast } = useToast();
 
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -302,10 +305,18 @@ export function StepPayment() {
     setPaymentId(paymentId);
     setPaymentStatus("processing");
 
-    await saveBooking(
+    const saved = await saveBooking(
       state, paymentId, itemTotal, photoPromoDiscount,
       adjustedItemTotal, total, payableAmount, zipPricing.minimumPrice,
     );
+
+    if (!saved) {
+      toast({
+        variant: "destructive",
+        title: "Booking recorded with issues",
+        description: "Your payment succeeded but we had trouble saving your booking. Our team will reach out to confirm.",
+      });
+    }
 
     await sendBookingWebhook({ ...state, paymentId }, subtotal, total, payableAmount);
     await sendConfirmationEmail({ ...state, paymentId }, total);
@@ -313,7 +324,7 @@ export function StepPayment() {
     setPaymentStatus("success");
     setCompleted(true);
   }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, payableAmount,
-      zipPricing.minimumPrice, subtotal, setPaymentId, setCompleted]);
+      zipPricing.minimumPrice, subtotal, setPaymentId, setCompleted, toast]);
 
   const handleError = useCallback((msg: string) => {
     setErrorMessage(msg);

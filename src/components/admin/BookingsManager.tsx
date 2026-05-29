@@ -2,14 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, isThisMonth, parseISO } from "date-fns";
 import {
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   DollarSign,
   Download,
   Loader2,
+  RefreshCw,
   Search,
   TrendingUp,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cancelBooking as apiCancelBooking, replayWebhook } from "@/api";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -147,6 +151,7 @@ function BookingDetailSheet({
 }) {
   const { toast } = useToast();
   const [cancelling, setCancelling] = useState(false);
+  const [replaying, setReplaying] = useState(false);
 
   if (!booking) return null;
 
@@ -155,21 +160,25 @@ function BookingDetailSheet({
 
   const handleCancel = async () => {
     setCancelling(true);
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: "cancelled" })
-      .eq("id", booking.id);
+    const { error } = await apiCancelBooking(booking.id);
     setCancelling(false);
     if (error) {
-      toast({
-        variant: "destructive",
-        title: "Failed to cancel",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Failed to cancel", description: error.message });
     } else {
       toast({ title: "Booking cancelled" });
       onCancelled(booking.id);
       onClose();
+    }
+  };
+
+  const handleReplayWebhook = async () => {
+    setReplaying(true);
+    const { error } = await replayWebhook(booking.id);
+    setReplaying(false);
+    if (error) {
+      toast({ variant: "destructive", title: "Webhook replay failed", description: error.message });
+    } else {
+      toast({ title: "Webhook replayed successfully" });
     }
   };
 
@@ -379,23 +388,38 @@ function BookingDetailSheet({
           </div>
         </ScrollArea>
 
-        {booking.status !== "cancelled" && (
-          <div className="px-6 py-4 border-t">
+        <div className="px-6 py-4 border-t flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReplayWebhook}
+            disabled={replaying}
+            className="flex-1"
+          >
+            {replaying
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : <RefreshCw className="mr-2 h-4 w-4" />}
+            Replay Webhook
+          </Button>
+          {booking.status !== "cancelled" && (
             <Button
               variant="destructive"
-              className="w-full"
+              size="sm"
               onClick={handleCancel}
               disabled={cancelling}
+              className="flex-1"
             >
               {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Mark Cancelled
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );
 }
+
+const PAGE_SIZE = 25;
 
 export function BookingsManager() {
   const { toast } = useToast();
@@ -403,6 +427,7 @@ export function BookingsManager() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
+  const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Booking | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -459,6 +484,15 @@ export function BookingsManager() {
       return matchesSearch && matchesFilter;
     });
   }, [bookings, search, filter]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = useMemo(
+    () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filtered, page]
+  );
+
+  // Reset to first page when filters/search change
+  useEffect(() => { setPage(0); }, [search, filter]);
 
   const stats = useMemo(() => {
     const total = bookings.length;
@@ -640,7 +674,7 @@ export function BookingsManager() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((b) => {
+                paginated.map((b) => {
                   const itemCount = parseItems(b.items).length;
                   const customCount = parseCustomItems(b.custom_items).length;
                   return (
@@ -701,6 +735,36 @@ export function BookingsManager() {
           </Table>
         </div>
       </Card>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            {filtered.length} booking{filtered.length !== 1 ? "s" : ""}
+            {search || filter !== "all" ? " (filtered)" : ""}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span>Page {page + 1} of {totalPages}</span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <BookingDetailSheet
         booking={selected}

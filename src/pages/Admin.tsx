@@ -11,6 +11,7 @@ import { BrandingManager } from "@/components/admin/BrandingManager";
 import { BookingsManager } from "@/components/admin/BookingsManager";
 import { ThemeManager } from "@/components/admin/ThemeManager";
 import { DateBlockingManager } from "@/components/admin/DateBlockingManager";
+import { ApiKeysManager } from "@/components/admin/ApiKeysManager";
 
 const sectionTitles: Record<AdminSection, string> = {
   bookings: "Bookings",
@@ -20,6 +21,7 @@ const sectionTitles: Record<AdminSection, string> = {
   theme: "Theme & Branding",
   dates: "Date Blocking",
   webhooks: "Webhooks",
+  "api-keys": "API Keys",
 };
 
 export default function Admin() {
@@ -61,6 +63,7 @@ export default function Admin() {
           {section === "theme"       && <ThemeManager />}
           {section === "branding"    && <BrandingManager />}
           {section === "webhooks"    && <WebhooksManager />}
+          {section === "api-keys"    && <ApiKeysManager />}
         </main>
       </div>
     </div>

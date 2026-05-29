@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   Package, Webhook, MapPinned, Image as ImageIcon,
-  CalendarX, Palette, ClipboardList,
+  CalendarX, Palette, ClipboardList, KeyRound,
 } from "lucide-react";
 
 export type AdminSection =
@@ -11,7 +11,8 @@ export type AdminSection =
   | "branding"
   | "theme"
   | "dates"
-  | "webhooks";
+  | "webhooks"
+  | "api-keys";
 
 interface AdminSidebarProps {
   active: AdminSection;
@@ -34,6 +35,12 @@ const groups: { label: string; items: { id: AdminSection; label: string; icon: R
       { id: "theme", label: "Theme", icon: Palette },
       { id: "branding", label: "Images", icon: ImageIcon },
       { id: "webhooks", label: "Webhooks", icon: Webhook },
+    ],
+  },
+  {
+    label: "Integrations",
+    items: [
+      { id: "api-keys", label: "API Keys", icon: KeyRound },
     ],
   },
 ];

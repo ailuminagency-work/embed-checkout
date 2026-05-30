@@ -4,7 +4,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useBooking } from "@/context/BookingContext";
 import { BOOKING_CONFIG } from "@/config/booking";
-import { sendBookingWebhook } from "@/utils/webhook";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/api";
 import { useToast } from "@/hooks/use-toast";
@@ -318,13 +317,13 @@ export function StepPayment() {
       });
     }
 
-    await sendBookingWebhook({ ...state, paymentId }, subtotal, total, payableAmount);
+    // Webhook delivery is handled server-side by the DB trigger on bookings INSERT
     await sendConfirmationEmail({ ...state, paymentId }, total);
 
     setPaymentStatus("success");
     setCompleted(true);
   }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, payableAmount,
-      zipPricing.minimumPrice, subtotal, setPaymentId, setCompleted, toast]);
+      zipPricing.minimumPrice, setPaymentId, setCompleted, toast]);
 
   const handleError = useCallback((msg: string) => {
     setErrorMessage(msg);

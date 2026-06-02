@@ -23,7 +23,7 @@ export function StepServiceType() {
     : zipReady
       ? `Minimum service charge for your area: $${zipPricing.minimumPrice}`
       : zipPricing.status === "unmapped"
-        ? "We need to confirm pricing for your area"
+        ? "Service available — contact us for a custom quote at ailuminagency@gmail.com"
         : "Enter your ZIP code first to continue";
 
   return (

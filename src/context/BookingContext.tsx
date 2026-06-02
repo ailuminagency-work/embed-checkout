@@ -68,7 +68,7 @@ const idleZipPricing: ZipPricingResult = {
   zipCode: "",
   minimumPrice: null,
   status: "idle",
-  message: "Enter your ZIP code to confirm pricing before checkout.",
+  message: "Enter your ZIP code to check if we service your area.",
 };
 
 const STORAGE_KEY = 'booking_draft_v1';

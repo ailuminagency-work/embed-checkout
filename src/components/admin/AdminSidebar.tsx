@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import {
   Package, Webhook, MapPinned, Image as ImageIcon,
   CalendarX, Palette, ClipboardList, KeyRound,
+  Clock, Layers, Rocket,
 } from "lucide-react";
 
 export type AdminSection =
@@ -12,7 +13,10 @@ export type AdminSection =
   | "theme"
   | "dates"
   | "webhooks"
-  | "api-keys";
+  | "api-keys"
+  | "time-windows"
+  | "service-types"
+  | "onboarding";
 
 interface AdminSidebarProps {
   active: AdminSection;
@@ -23,24 +27,27 @@ const groups: { label: string; items: { id: AdminSection; label: string; icon: R
   {
     label: "Operations",
     items: [
-      { id: "bookings", label: "Bookings", icon: ClipboardList },
-      { id: "catalog", label: "Catalog", icon: Package },
-      { id: "zip-pricing", label: "ZIP Pricing", icon: MapPinned },
-      { id: "dates", label: "Date Blocking", icon: CalendarX },
+      { id: "bookings",      label: "Bookings",      icon: ClipboardList },
+      { id: "catalog",       label: "Catalog",        icon: Package },
+      { id: "zip-pricing",   label: "ZIP Pricing",    icon: MapPinned },
+      { id: "dates",         label: "Date Blocking",  icon: CalendarX },
+      { id: "time-windows",  label: "Time Windows",   icon: Clock },
+      { id: "service-types", label: "Service Types",  icon: Layers },
     ],
   },
   {
     label: "Customise",
     items: [
-      { id: "theme", label: "Theme", icon: Palette },
-      { id: "branding", label: "Images", icon: ImageIcon },
+      { id: "theme",    label: "Theme",    icon: Palette },
+      { id: "branding", label: "Images",   icon: ImageIcon },
       { id: "webhooks", label: "Webhooks", icon: Webhook },
     ],
   },
   {
     label: "Integrations",
     items: [
-      { id: "api-keys", label: "API Keys", icon: KeyRound },
+      { id: "api-keys",    label: "API Keys",    icon: KeyRound },
+      { id: "onboarding",  label: "Setup",       icon: Rocket },
     ],
   },
 ];

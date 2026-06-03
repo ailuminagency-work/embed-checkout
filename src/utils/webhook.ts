@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { BookingState } from "@/types/booking";
-import { BOOKING_CONFIG } from "@/config/booking";
 
 interface WebhookConfig {
   active_mode: string;
@@ -63,11 +62,11 @@ export async function sendBookingWebhook(
   // Try DB settings first, fall back to env config
   const dbConfig = await getWebhookConfig();
 
-  const mode = dbConfig?.active_mode || BOOKING_CONFIG.webhookMode;
+  const mode = dbConfig?.active_mode || "test";
   const makeUrl = dbConfig
     ? (mode === "live" ? dbConfig.live_url : dbConfig.test_url)
-    : BOOKING_CONFIG.webhookUrl;
-  const twinUrl = dbConfig?.twin_url || BOOKING_CONFIG.twinWebhookUrl;
+    : "";
+  const twinUrl = dbConfig?.twin_url || "";
 
   const payload = {
     serviceType: state.serviceType,
@@ -82,7 +81,7 @@ export async function sendBookingWebhook(
     subtotal,
     total,
     amountCharged: payableAmount,
-    depositMode: BOOKING_CONFIG.depositMode,
+    depositMode: false,
     schedule: {
       date: state.selectedDate?.toISOString(),
       timeWindow: state.selectedTimeWindow?.label,
@@ -97,7 +96,7 @@ export async function sendBookingWebhook(
       notes: state.customer.notes,
     },
     stripePaymentId: state.paymentId,
-    currency: BOOKING_CONFIG.currency,
+    currency: "USD",
     webhookMode: mode,
     timestamp: new Date().toISOString(),
   };

@@ -1,10 +1,9 @@
 import { useBooking } from "@/context/BookingContext";
-import { BOOKING_CONFIG } from "@/config/booking";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 
 export function MobileBottomBar() {
-  const { state, payableAmount, canProceed, nextStep, prevStep, zipPricing } = useBooking();
+  const { state, config, payableAmount, canProceed, nextStep, prevStep, zipPricing } = useBooking();
 
   return (
     <div className="md:hidden shrink-0 border-t border-border bg-card px-4 py-3 flex items-center gap-3">
@@ -17,9 +16,9 @@ export function MobileBottomBar() {
       <div className="flex-1 min-w-0">
         {state.cart.length > 0 ? (
           <div>
-            <p className="text-xs text-muted-foreground">{BOOKING_CONFIG.depositMode ? "Deposit" : "Final total"}</p>
+            <p className="text-xs text-muted-foreground">{config.deposit_mode ? "Deposit" : "Final total"}</p>
             <p className="text-lg font-bold text-foreground tabular-nums leading-tight">
-              {BOOKING_CONFIG.currencySymbol}{payableAmount}
+              {config.currency_symbol}{payableAmount}
             </p>
             {zipPricing.status !== "resolved" && state.customer.zip && (
               <p className="text-[11px] text-destructive truncate">{zipPricing.message}</p>

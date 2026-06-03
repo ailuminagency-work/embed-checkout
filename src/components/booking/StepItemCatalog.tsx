@@ -2,7 +2,6 @@ import { useState, useMemo, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion } from "framer-motion";
 import { useBooking } from "@/context/BookingContext";
-import { BOOKING_CONFIG } from "@/config/booking";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ const categoryIcons: Record<string, typeof Sofa> = {
 
 export function StepItemCatalog() {
   const {
-    catalog, categories, catalogLoading, state,
+    catalog, categories, catalogLoading, state, config,
     addToCart, updateQuantity, addCustomItem, removeCustomItem,
     updateCustomer, setSkipPhotos,
   } = useBooking();
@@ -116,7 +115,7 @@ export function StepItemCatalog() {
                   <div className="relative z-10 p-3 pt-8">
                     <p className="text-xs font-medium text-white truncate text-center">{item.name}</p>
                     <p className="text-xs font-bold text-white/90 text-center mt-0.5">
-                      {BOOKING_CONFIG.currencySymbol}{item.price}
+                      {config.currency_symbol}{item.price}
                     </p>
                     <div className="flex items-center justify-center gap-1.5 mt-2">
                       {qty > 0 ? (
@@ -153,7 +152,7 @@ export function StepItemCatalog() {
                   </div>
                   <p className="text-xs font-medium text-foreground truncate text-center">{item.name}</p>
                   <p className="text-xs font-bold text-primary text-center mt-0.5">
-                    {BOOKING_CONFIG.currencySymbol}{item.price}
+                    {config.currency_symbol}{item.price}
                   </p>
                   <div className="flex items-center justify-center gap-1.5 mt-2">
                     {qty > 0 ? (
@@ -246,10 +245,10 @@ export function StepItemCatalog() {
         <div className="flex items-center gap-2 mb-1">
           <Label className="text-xs font-medium text-foreground">Photos</Label>
           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-            {BOOKING_CONFIG.photoPromoPercent}% OFF
+            {config.photo_promo_percent}% OFF
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mb-2">Upload photos of each item accurately &amp; get {BOOKING_CONFIG.photoPromoPercent}% off!</p>
+        <p className="text-xs text-muted-foreground mb-2">Upload photos of each item accurately &amp; get {config.photo_promo_percent}% off!</p>
         <input
           ref={fileRef}
           type="file"
@@ -295,7 +294,7 @@ export function StepItemCatalog() {
               onCheckedChange={(checked) => setSkipPhotos(!!checked)}
             />
             <span className="text-xs text-muted-foreground">
-              I don't have photos — continue without {BOOKING_CONFIG.photoPromoPercent}% discount
+              I don't have photos — continue without {config.photo_promo_percent}% discount
             </span>
           </label>
         )}

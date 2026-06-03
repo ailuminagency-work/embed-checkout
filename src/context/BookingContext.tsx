@@ -8,7 +8,7 @@ import {
   TimeWindow,
   ZipPricingResult,
 } from "@/types/booking";
-import { BOOKING_CONFIG } from "@/config/booking";
+import { useAppConfig, AppConfig, CONFIG_DEFAULTS } from "@/hooks/useAppConfig";
 import { defaultCatalog } from "@/data/defaultCatalog";
 import { ImageSettings, parseImageSettings } from "@/lib/imageSettings";
 
@@ -19,6 +19,7 @@ export interface AppImage {
 
 interface BookingContextValue {
   state: BookingState;
+  config: AppConfig;
   catalog: CatalogItem[];
   categories: string[];
   catalogLoading: boolean;
@@ -117,6 +118,8 @@ export const useBooking = () => {
 const normalizeZip = (zip: string) => zip.trim();
 
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { config } = useAppConfig();
+
   const [state, setState] = useState<BookingState>(() => {
     const draft = loadDraft();
     return {
@@ -175,8 +178,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const fetchCatalog = async () => {
       try {
-        if (BOOKING_CONFIG.catalogEndpoint) {
-          const response = await fetch(BOOKING_CONFIG.catalogEndpoint);
+        if (false) {
+          // catalogEndpoint is no longer used — catalog comes from Supabase directly
+          const response = await fetch("");
           const data = await response.json();
           setCatalog(data);
         } else {
@@ -213,7 +217,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
 
-    if (!BOOKING_CONFIG.zipCodePattern.test(zipCode)) {
+    if (!config.zip_code_pattern.test(zipCode)) {
       setZipLookupLoading(false);
       setZipPricing({
         zipCode,
@@ -262,7 +266,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [state.customer.zip]);
+  }, [state.customer.zip, config.zip_code_pattern]);
 
   const categories = useMemo(() => [...new Set(catalog.map((item) => item.category))], [catalog]);
 
@@ -334,10 +338,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const subtotal = itemTotal;
   const hasPhotos = state.customer.photos.length > 0;
   const photoPromoDiscount = useMemo(
-    () => (hasPhotos && BOOKING_CONFIG.photoPromoPercent > 0
-      ? Math.round((itemTotal * BOOKING_CONFIG.photoPromoPercent) / 100)
+    () => (hasPhotos && config.photo_promo_percent > 0
+      ? Math.round((itemTotal * config.photo_promo_percent) / 100)
       : 0),
-    [hasPhotos, itemTotal],
+    [hasPhotos, itemTotal, config.photo_promo_percent],
   );
   const adjustedItemTotal = useMemo(() => Math.max(itemTotal - photoPromoDiscount, 0), [itemTotal, photoPromoDiscount]);
   const total = useMemo(() => {
@@ -346,8 +350,8 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return Math.max(adjustedItemTotal, zipPricing.minimumPrice);
   }, [adjustedItemTotal, state.cart.length, zipPricing.minimumPrice]);
   const payableAmount = useMemo(
-    () => (BOOKING_CONFIG.depositMode ? Math.ceil((total * BOOKING_CONFIG.depositPercentage) / 100) : total),
-    [total],
+    () => (config.deposit_mode ? Math.ceil((total * config.deposit_percentage) / 100) : total),
+    [total, config.deposit_mode, config.deposit_percentage],
   );
 
   const zipReady = zipPricing.status === "resolved";
@@ -381,6 +385,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const value: BookingContextValue = {
     state,
+    config,
     catalog,
     categories,
     catalogLoading,

@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useBooking } from "@/context/BookingContext";
-import { BOOKING_CONFIG } from "@/config/booking";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/api";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +26,7 @@ async function saveBooking(
   total: number,
   payableAmount: number,
   minimumPrice: number | null,
+  depositMode: boolean = false,
 ): Promise<boolean> {
   const result = await createBooking({
     reference: paymentId,
@@ -56,7 +56,7 @@ async function saveBooking(
     minimum_price: minimumPrice,
     final_total: total,
     amount_charged: payableAmount,
-    deposit_mode: BOOKING_CONFIG.depositMode,
+    deposit_mode: depositMode,
     payment_id: paymentId,
     notes: state.customer.notes || null,
   });
@@ -85,7 +85,7 @@ async function sendConfirmationEmail(state: BookingState, total: number) {
 
 // ── success screen ─────────────────────────────────────────────────────────────
 function SuccessScreen() {
-  const { state, payableAmount } = useBooking();
+  const { state, config, payableAmount } = useBooking();
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -116,10 +116,10 @@ function SuccessScreen() {
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">
-            {BOOKING_CONFIG.depositMode ? "Deposit Paid" : "Total Paid"}
+            {config.deposit_mode ? "Deposit Paid" : "Total Paid"}
           </span>
           <span className="font-bold text-foreground">
-            {BOOKING_CONFIG.currencySymbol}{payableAmount}
+            {config.currency_symbol}{payableAmount}
           </span>
         </div>
         {state.paymentId && (
@@ -144,7 +144,7 @@ function StripeCardForm({ clientSecret, agreedToTerms, onSuccess, onError }: Str
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
-  const { payableAmount } = useBooking();
+  const { payableAmount, config } = useBooking();
 
   const handleSubmit = async () => {
     if (!stripe || !elements) return;
@@ -196,7 +196,7 @@ function StripeCardForm({ clientSecret, agreedToTerms, onSuccess, onError }: Str
         {processing ? (
           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
         ) : (
-          `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
+          `Pay ${config.currency_symbol}${payableAmount}`
         )}
       </Button>
     </div>
@@ -212,7 +212,7 @@ interface DemoFormProps {
 
 function DemoPaymentForm({ agreedToTerms, onSuccess, onError }: DemoFormProps) {
   const [processing, setProcessing] = useState(false);
-  const { payableAmount } = useBooking();
+  const { payableAmount, config } = useBooking();
 
   const handlePay = async () => {
     setProcessing(true);
@@ -256,7 +256,7 @@ function DemoPaymentForm({ agreedToTerms, onSuccess, onError }: DemoFormProps) {
         {processing ? (
           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing payment…</>
         ) : (
-          `Pay ${BOOKING_CONFIG.currencySymbol}${payableAmount}`
+          `Pay ${config.currency_symbol}${payableAmount}`
         )}
       </Button>
     </div>
@@ -266,7 +266,7 @@ function DemoPaymentForm({ agreedToTerms, onSuccess, onError }: DemoFormProps) {
 // ── main step ──────────────────────────────────────────────────────────────────
 export function StepPayment() {
   const {
-    state, subtotal, total, payableAmount, adjustedItemTotal,
+    state, config, subtotal, total, payableAmount, adjustedItemTotal,
     photoPromoDiscount, itemTotal, zipPricing,
     setPaymentId, setCompleted,
   } = useBooking();
@@ -277,28 +277,44 @@ export function StepPayment() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [verifiedAmount, setVerifiedAmount] = useState<number | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
 
-  const stripeKey = BOOKING_CONFIG.stripePublishableKey;
+  const stripeKey = config.stripe_publishable_key;
   const useStripeMode = !!stripeKey;
+  const sym = config.currency_symbol;
 
-  // load stripe + create PaymentIntent
+  // load stripe + create PaymentIntent with server-calculated amount (Change 3)
   useEffect(() => {
     if (!useStripeMode || paymentStatus === "success") return;
     setStripeLoading(true);
     setStripePromise(loadStripe(stripeKey!));
 
+    const cartItems = state.cart.map((c) => ({ id: c.item.id, quantity: c.quantity }));
+    const photosUploaded = state.customer.photos.length > 0;
+
     supabase.functions
-      .invoke("create-payment-intent", { body: { amount: payableAmount, currency: BOOKING_CONFIG.currency.toLowerCase() } })
+      .invoke("create-payment-intent", {
+        body: { items: cartItems, zip_code: state.customer.zip, photos_uploaded: photosUploaded },
+      })
       .then(({ data, error }) => {
         if (error || !data?.client_secret) {
           setErrorMessage("Could not initialise payment. Please refresh and try again.");
         } else {
           setClientSecret(data.client_secret);
+          setVerifiedAmount(data.verified_amount);
+          if (data.verified_amount !== payableAmount) {
+            toast({
+              title: "Price adjusted",
+              description: `Your total has been verified at ${sym}${data.verified_amount}.`,
+            });
+          }
         }
         setStripeLoading(false);
       });
-  }, [useStripeMode, stripeKey, payableAmount]);
+  }, [useStripeMode, stripeKey, state.cart, state.customer.zip, state.customer.photos.length]);
+
+  const displayAmount = verifiedAmount ?? payableAmount;
 
   const handleSuccess = useCallback(async (paymentId: string) => {
     setPaymentId(paymentId);
@@ -306,7 +322,8 @@ export function StepPayment() {
 
     const saved = await saveBooking(
       state, paymentId, itemTotal, photoPromoDiscount,
-      adjustedItemTotal, total, payableAmount, zipPricing.minimumPrice,
+      adjustedItemTotal, total, displayAmount, zipPricing.minimumPrice,
+      config.deposit_mode,
     );
 
     if (!saved) {
@@ -318,11 +335,11 @@ export function StepPayment() {
     }
 
     // Webhook delivery is handled server-side by the DB trigger on bookings INSERT
-    await sendConfirmationEmail({ ...state, paymentId }, total);
+    await sendConfirmationEmail({ ...state, paymentId }, displayAmount);
 
     setPaymentStatus("success");
     setCompleted(true);
-  }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, payableAmount,
+  }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, displayAmount,
       zipPricing.minimumPrice, setPaymentId, setCompleted, toast]);
 
   const handleError = useCallback((msg: string) => {
@@ -345,18 +362,18 @@ export function StepPayment() {
     >
       <h2 className="text-xl font-bold text-foreground mb-1">Review & Pay</h2>
       <p className="text-sm text-muted-foreground mb-6">
-        {BOOKING_CONFIG.depositMode
-          ? `A ${BOOKING_CONFIG.depositPercentage}% deposit is required to confirm your booking.`
+        {config.deposit_mode
+          ? `A ${config.deposit_percentage}% deposit is required to confirm your booking.`
           : "Full payment is required to confirm your booking."}
       </p>
 
       {/* Mobile total */}
       <div className="md:hidden bg-card border border-border rounded-xl p-4 mb-6 flex justify-between items-center">
         <span className="text-sm text-muted-foreground">
-          {BOOKING_CONFIG.depositMode ? "Deposit due" : "Total due"}
+          {config.deposit_mode ? "Deposit due" : "Total due"}
         </span>
         <span className="text-xl font-bold text-foreground">
-          {BOOKING_CONFIG.currencySymbol}{payableAmount}
+          {sym}{displayAmount}
         </span>
       </div>
 

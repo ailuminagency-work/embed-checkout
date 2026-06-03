@@ -7,15 +7,10 @@ import { Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const TIME_WINDOWS: TimeWindow[] = [
-  { id: "morning", label: "8:00 AM – 12:00 PM" },
-  { id: "afternoon", label: "12:00 PM – 4:00 PM" },
-  { id: "evening", label: "4:00 PM – 8:00 PM" },
-];
-
 export function StepSchedule() {
   const { state, setSelectedDate, setSelectedTimeWindow } = useBooking();
   const [blockedDates, setBlockedDates] = useState<Date[]>([]);
+  const [timeWindows, setTimeWindows] = useState<TimeWindow[]>([]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -24,6 +19,15 @@ export function StepSchedule() {
     supabase.from("blocked_dates").select("date").then(({ data }) => {
       if (data) setBlockedDates(data.map(r => new Date(r.date + 'T00:00:00')));
     });
+
+    supabase
+      .from("time_windows")
+      .select("id, label, sort_order")
+      .eq("active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (data) setTimeWindows(data.map(r => ({ id: r.id, label: r.label })));
+      });
   }, []);
 
   return (
@@ -65,7 +69,7 @@ export function StepSchedule() {
             <span className="text-sm font-medium text-foreground">Time Window</span>
           </div>
           <div className="space-y-2">
-            {TIME_WINDOWS.map((tw) => (
+            {timeWindows.map((tw) => (
               <button
                 key={tw.id}
                 onClick={() => setSelectedTimeWindow(tw)}

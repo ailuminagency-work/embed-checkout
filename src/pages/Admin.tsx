@@ -12,16 +12,22 @@ import { BookingsManager } from "@/components/admin/BookingsManager";
 import { ThemeManager } from "@/components/admin/ThemeManager";
 import { DateBlockingManager } from "@/components/admin/DateBlockingManager";
 import { ApiKeysManager } from "@/components/admin/ApiKeysManager";
+import { TimeWindowManager } from "@/components/admin/TimeWindowManager";
+import { ServiceTypeManager } from "@/components/admin/ServiceTypeManager";
+import { OnboardingTab } from "@/components/admin/OnboardingTab";
 
 const sectionTitles: Record<AdminSection, string> = {
-  bookings: "Bookings",
-  catalog: "Catalog",
-  "zip-pricing": "ZIP Pricing",
-  branding: "Images",
-  theme: "Theme & Branding",
-  dates: "Date Blocking",
-  webhooks: "Webhooks",
-  "api-keys": "API Keys",
+  bookings:       "Bookings",
+  catalog:        "Catalog",
+  "zip-pricing":  "ZIP Pricing",
+  branding:       "Images",
+  theme:          "Theme & Branding",
+  dates:          "Date Blocking",
+  webhooks:       "Webhooks",
+  "api-keys":     "API Keys",
+  "time-windows": "Time Windows",
+  "service-types":"Service Types",
+  onboarding:     "Setup & Onboarding",
 };
 
 export default function Admin() {
@@ -56,14 +62,17 @@ export default function Admin() {
       <div className="flex">
         <AdminSidebar active={section} onSelect={setSection} />
         <main className="flex-1 max-w-5xl p-6">
-          {section === "bookings"    && <BookingsManager />}
-          {section === "catalog"     && <CatalogManager />}
-          {section === "zip-pricing" && <ZipPricingManager />}
-          {section === "dates"       && <DateBlockingManager />}
-          {section === "theme"       && <ThemeManager />}
-          {section === "branding"    && <BrandingManager />}
-          {section === "webhooks"    && <WebhooksManager />}
-          {section === "api-keys"    && <ApiKeysManager />}
+          {section === "bookings"      && <BookingsManager />}
+          {section === "catalog"       && <CatalogManager />}
+          {section === "zip-pricing"   && <ZipPricingManager />}
+          {section === "dates"         && <DateBlockingManager />}
+          {section === "theme"         && <ThemeManager />}
+          {section === "branding"      && <BrandingManager />}
+          {section === "webhooks"      && <WebhooksManager />}
+          {section === "api-keys"      && <ApiKeysManager />}
+          {section === "time-windows"  && <TimeWindowManager />}
+          {section === "service-types" && <ServiceTypeManager />}
+          {section === "onboarding"    && <OnboardingTab />}
         </main>
       </div>
     </div>

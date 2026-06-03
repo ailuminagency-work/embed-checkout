@@ -1,12 +1,11 @@
 import { useBooking } from "@/context/BookingContext";
-import { BOOKING_CONFIG } from "@/config/booking";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ShoppingCart, AlertTriangle, ArrowRight, ArrowLeft, Tag } from "lucide-react";
 
 export function OrderSummary() {
   const {
-    state, itemTotal, adjustedItemTotal, photoPromoDiscount, total, payableAmount,
+    state, config, itemTotal, adjustedItemTotal, photoPromoDiscount, total, payableAmount,
     canProceed, nextStep, prevStep, zipPricing,
   } = useBooking();
 
@@ -45,7 +44,7 @@ export function OrderSummary() {
                       )}
                     </span>
                     <span className="font-medium text-foreground tabular-nums">
-                      {BOOKING_CONFIG.currencySymbol}{c.item.price * c.quantity}
+                      {config.currency_symbol}{c.item.price * c.quantity}
                     </span>
                   </div>
                 ))}
@@ -93,26 +92,26 @@ export function OrderSummary() {
           <div className="space-y-1 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Item total</span>
-              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{itemTotal}</span>
+              <span className="tabular-nums">{config.currency_symbol}{itemTotal}</span>
             </div>
             {photoPromoDiscount > 0 && (
               <div className="flex justify-between text-success">
                 <span className="flex items-center gap-1">
                   <Tag className="h-3 w-3" />
-                  Photo promo ({BOOKING_CONFIG.photoPromoPercent}% off)
+                  Photo promo ({config.photo_promo_percent}% off)
                 </span>
-                <span className="tabular-nums">-{BOOKING_CONFIG.currencySymbol}{photoPromoDiscount}</span>
+                <span className="tabular-nums">-{config.currency_symbol}{photoPromoDiscount}</span>
               </div>
             )}
             <div className="flex justify-between text-muted-foreground">
               <span>Adjusted item total</span>
-              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{adjustedItemTotal}</span>
+              <span className="tabular-nums">{config.currency_symbol}{adjustedItemTotal}</span>
             </div>
             {zipPricing.status === "resolved" && (
               <>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Area minimum</span>
-                  <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{zipPricing.minimumPrice}</span>
+                  <span className="tabular-nums">{config.currency_symbol}{zipPricing.minimumPrice}</span>
                 </div>
                 {adjustedItemTotal < (zipPricing.minimumPrice ?? 0) && (
                   <div className="flex items-center gap-1 text-xs text-accent">
@@ -129,8 +128,8 @@ export function OrderSummary() {
               </div>
             )}
             <div className="flex justify-between font-bold text-foreground">
-              <span>{BOOKING_CONFIG.depositMode ? "Deposit" : "Final adjusted total"}</span>
-              <span className="tabular-nums">{BOOKING_CONFIG.currencySymbol}{payableAmount}</span>
+              <span>{config.deposit_mode ? "Deposit" : "Final adjusted total"}</span>
+              <span className="tabular-nums">{config.currency_symbol}{payableAmount}</span>
             </div>
           </div>
         )}

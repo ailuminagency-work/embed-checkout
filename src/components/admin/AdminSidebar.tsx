@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import {
   Package, Webhook, MapPinned, Image as ImageIcon,
   CalendarX, Palette, ClipboardList, KeyRound,
-  Clock, Layers, Rocket,
+  Clock, Layers, Rocket, BarChart3,
 } from "lucide-react";
 
 export type AdminSection =
@@ -16,7 +16,8 @@ export type AdminSection =
   | "api-keys"
   | "time-windows"
   | "service-types"
-  | "onboarding";
+  | "onboarding"
+  | "tracking";
 
 interface AdminSidebarProps {
   active: AdminSection;
@@ -47,6 +48,7 @@ const groups: { label: string; items: { id: AdminSection; label: string; icon: R
     label: "Integrations",
     items: [
       { id: "api-keys",    label: "API Keys",    icon: KeyRound },
+      { id: "tracking",    label: "Analytics",   icon: BarChart3 },
       { id: "onboarding",  label: "Setup",       icon: Rocket },
     ],
   },

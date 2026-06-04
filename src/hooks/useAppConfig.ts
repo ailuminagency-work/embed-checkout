@@ -30,6 +30,12 @@ export interface AppConfig {
   make_webhook_url_test: string;
   make_webhook_url_live: string;
   twin_webhook_url: string;
+
+  // ── Analytics & tracking ───────────────────────────────────────────────────
+  tracking_enabled: boolean;
+  ga4_measurement_id: string;
+  google_ads_conversion_id: string;
+  google_ads_conversion_label: string;
 }
 
 export const CONFIG_DEFAULTS: AppConfig = {
@@ -50,6 +56,10 @@ export const CONFIG_DEFAULTS: AppConfig = {
   make_webhook_url_test: "",
   make_webhook_url_live: "",
   twin_webhook_url: "",
+  tracking_enabled: false,
+  ga4_measurement_id: "",
+  google_ads_conversion_id: "",
+  google_ads_conversion_label: "",
 };
 
 function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
@@ -78,6 +88,10 @@ function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
     make_webhook_url_test: map.make_webhook_url_test ?? "",
     make_webhook_url_live: map.make_webhook_url_live ?? "",
     twin_webhook_url: map.twin_webhook_url ?? "",
+    tracking_enabled: map.tracking_enabled === "true",
+    ga4_measurement_id: map.ga4_measurement_id ?? "",
+    google_ads_conversion_id: map.google_ads_conversion_id ?? "",
+    google_ads_conversion_label: map.google_ads_conversion_label ?? "",
   };
 }
 

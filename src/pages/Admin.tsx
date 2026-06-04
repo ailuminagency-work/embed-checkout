@@ -15,6 +15,7 @@ import { ApiKeysManager } from "@/components/admin/ApiKeysManager";
 import { TimeWindowManager } from "@/components/admin/TimeWindowManager";
 import { ServiceTypeManager } from "@/components/admin/ServiceTypeManager";
 import { OnboardingTab } from "@/components/admin/OnboardingTab";
+import { TrackingManager } from "@/components/admin/TrackingManager";
 
 const sectionTitles: Record<AdminSection, string> = {
   bookings:       "Bookings",
@@ -28,6 +29,7 @@ const sectionTitles: Record<AdminSection, string> = {
   "time-windows": "Time Windows",
   "service-types":"Service Types",
   onboarding:     "Setup & Onboarding",
+  tracking:       "Analytics & Tracking",
 };
 
 export default function Admin() {
@@ -73,6 +75,7 @@ export default function Admin() {
           {section === "time-windows"  && <TimeWindowManager />}
           {section === "service-types" && <ServiceTypeManager />}
           {section === "onboarding"    && <OnboardingTab />}
+          {section === "tracking"      && <TrackingManager />}
         </main>
       </div>
     </div>

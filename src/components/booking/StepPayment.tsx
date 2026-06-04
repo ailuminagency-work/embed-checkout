@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -6,6 +6,7 @@ import { useBooking } from "@/context/BookingContext";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/api";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/tracking";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -284,6 +285,21 @@ export function StepPayment() {
   const useStripeMode = !!stripeKey;
   const sym = config.currency_symbol;
 
+  const trackingCfg = useMemo(() => ({
+    enabled: config.tracking_enabled,
+    ga4MeasurementId: config.ga4_measurement_id,
+    googleAdsConversionId: config.google_ads_conversion_id,
+    googleAdsConversionLabel: config.google_ads_conversion_label,
+  }), [config.tracking_enabled, config.ga4_measurement_id, config.google_ads_conversion_id, config.google_ads_conversion_label]);
+
+  // Fire checkout_started once when this step mounts
+  useEffect(() => {
+    trackEvent("checkout_started", {
+      item_count: state.cart.length,
+      currency: config.currency,
+    }, trackingCfg);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // load stripe + create PaymentIntent with server-calculated amount (Change 3)
   useEffect(() => {
     if (!useStripeMode || paymentStatus === "success") return;
@@ -337,10 +353,17 @@ export function StepPayment() {
     // Webhook delivery is handled server-side by the DB trigger on bookings INSERT
     await sendConfirmationEmail({ ...state, paymentId }, displayAmount);
 
+    trackEvent("booking_confirmed", {
+      transaction_id: paymentId,
+      value: displayAmount,
+      currency: config.currency,
+      item_count: state.cart.length,
+    }, trackingCfg);
+
     setPaymentStatus("success");
     setCompleted(true);
   }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, displayAmount,
-      zipPricing.minimumPrice, setPaymentId, setCompleted, toast]);
+      zipPricing.minimumPrice, config.currency, trackingCfg, setPaymentId, setCompleted, toast]);
 
   const handleError = useCallback((msg: string) => {
     setErrorMessage(msg);

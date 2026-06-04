@@ -11,6 +11,7 @@ import {
 import { useAppConfig, AppConfig, CONFIG_DEFAULTS } from "@/hooks/useAppConfig";
 import { defaultCatalog } from "@/data/defaultCatalog";
 import { ImageSettings, parseImageSettings } from "@/lib/imageSettings";
+import { initTracking, trackEvent } from "@/lib/tracking";
 
 export interface AppImage {
   url: string | null;
@@ -120,6 +121,16 @@ const normalizeZip = (zip: string) => zip.trim();
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { config } = useAppConfig();
 
+  const trackingCfg = useMemo(() => ({
+    enabled: config.tracking_enabled,
+    ga4MeasurementId: config.ga4_measurement_id,
+    googleAdsConversionId: config.google_ads_conversion_id,
+    googleAdsConversionLabel: config.google_ads_conversion_label,
+  }), [config.tracking_enabled, config.ga4_measurement_id, config.google_ads_conversion_id, config.google_ads_conversion_label]);
+
+  // Init GA4 script when tracking config is ready
+  useEffect(() => { initTracking(trackingCfg); }, [trackingCfg]);
+
   const [state, setState] = useState<BookingState>(() => {
     const draft = loadDraft();
     return {
@@ -150,6 +161,17 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       saveDraft(state);
     }
   }, [state]);
+
+  // Fire step-transition tracking events (no PII)
+  useEffect(() => {
+    if (state.step === 1) {
+      trackEvent("booking_started", { service_type: state.serviceType ?? "" }, trackingCfg);
+    } else if (state.step === 2) {
+      trackEvent("items_selected", { item_count: state.cart.length }, trackingCfg);
+    } else if (state.step === 3) {
+      trackEvent("date_selected", {}, trackingCfg);
+    }
+  }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let active = true;

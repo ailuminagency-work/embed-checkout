@@ -150,10 +150,14 @@ const settings = [
   { key: "make_webhook_url_test", value: makeTest.trim() },
   { key: "make_webhook_url_live", value: makeLive.trim() },
   { key: "twin_webhook_url",      value: twinUrl.trim() },
-  { key: "deposit_mode",          value: "false" },
-  { key: "deposit_percentage",    value: "25" },
-  { key: "photo_promo_percent",   value: "5" },
-  { key: "zip_code_pattern",      value: "^\\d{5}(?:-\\d{4})?$" },
+  { key: "deposit_mode",                value: "false" },
+  { key: "deposit_percentage",          value: "25" },
+  { key: "photo_promo_percent",         value: "5" },
+  { key: "zip_code_pattern",            value: "^\\d{5}(?:-\\d{4})?$" },
+  { key: "tracking_enabled",            value: "false" },
+  { key: "ga4_measurement_id",          value: "" },
+  { key: "google_ads_conversion_id",    value: "" },
+  { key: "google_ads_conversion_label", value: "" },
 ];
 
 const { error: settingsErr } = await supabase

@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useBooking } from "@/context/BookingContext";
+import { useTranslation } from "@/i18n";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Home, Building2, Briefcase, Building } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Home, Building2, Briefcase, Building, CheckCircle2, Tag } from "lucide-react";
 
 const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -13,9 +16,22 @@ const formatPhone = (value: string): string => {
 };
 
 export function StepCustomerDetails() {
-  const { state, updateCustomer, zipPricing, zipLookupLoading } = useBooking();
+  const { state, updateCustomer, zipPricing, zipLookupLoading, applyPromoCode, clearPromoCode, promoDiscount, config } = useBooking();
+  const { t } = useTranslation();
   const c = state.customer;
   const zipInvalid = c.zip.length > 0 && zipPricing.status !== "resolved";
+
+  const [promoInput, setPromoInput] = useState("");
+  const [promoState, setPromoState] = useState<"idle" | "valid" | "invalid" | "loading">("idle");
+
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoState("loading");
+    const result = await applyPromoCode(promoInput);
+    setPromoState(result.valid ? "valid" : "invalid");
+  };
+
+  const promoEnabled = config.addon_promo_codes_enabled;
 
   return (
     <motion.div
@@ -24,8 +40,8 @@ export function StepCustomerDetails() {
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
     >
-      <h2 className="text-xl font-bold text-foreground mb-1">Your details</h2>
-      <p className="text-sm text-muted-foreground mb-6">Tell us where and how to reach you.</p>
+      <h2 className="text-xl font-bold text-foreground mb-1">{t("details_title")}</h2>
+      <p className="text-sm text-muted-foreground mb-6">{t("details_subtitle")}</p>
 
       <div className="space-y-4">
         {/* Name */}
@@ -148,16 +164,58 @@ export function StepCustomerDetails() {
 
         {/* Notes */}
         <div>
-          <Label htmlFor="notes" className="text-xs font-medium text-foreground">Special Instructions</Label>
+          <Label htmlFor="notes" className="text-xs font-medium text-foreground">{t("details_notes")}</Label>
           <Textarea
             id="notes"
             value={c.notes}
             onChange={(e) => updateCustomer({ notes: e.target.value })}
-            placeholder="Items are in the garage. Dog is friendly."
+            placeholder={t("details_notes_placeholder")}
             className="mt-1 bg-card resize-none"
             rows={3}
           />
         </div>
+
+        {/* Promo code — only shown when add-on is enabled */}
+        {promoEnabled && (
+          <div>
+            <Label htmlFor="promo" className="text-xs font-medium text-foreground flex items-center gap-1">
+              <Tag className="h-3 w-3" />{t("details_promo_label")}
+            </Label>
+            <div className="mt-1 flex gap-2">
+              <Input
+                id="promo"
+                value={promoInput}
+                onChange={(e) => {
+                  setPromoInput(e.target.value);
+                  if (promoState !== "idle") { setPromoState("idle"); clearPromoCode(); }
+                }}
+                placeholder={t("details_promo_placeholder")}
+                className="bg-card flex-1"
+                disabled={promoState === "valid"}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!promoInput.trim() || promoState === "loading" || promoState === "valid"}
+                onClick={handleApplyPromo}
+                className="shrink-0"
+              >
+                {promoState === "valid" ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1 text-success" />{t("details_promo_applied")}</> : t("details_promo_apply")}
+              </Button>
+            </div>
+            {promoState === "invalid" && (
+              <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />{t("details_promo_invalid")}
+              </p>
+            )}
+            {promoState === "valid" && promoDiscount > 0 && (
+              <p className="text-xs text-success mt-1 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />{t("details_promo_discount")}: −{config.currency_symbol}{promoDiscount}
+              </p>
+            )}
+          </div>
+        )}
 
       </div>
     </motion.div>

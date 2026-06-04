@@ -10,6 +10,7 @@ import Admin from "./pages/Admin";
 import Embed from "./pages/Embed";
 import Terms from "./pages/Terms";
 import CancellationPolicy from "./pages/CancellationPolicy";
+import Cancel from "./pages/Cancel";
 import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/cancellation-policy" element={<CancellationPolicy />} />
+          <Route path="/cancel" element={<Cancel />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

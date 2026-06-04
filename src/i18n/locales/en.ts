@@ -1,0 +1,100 @@
+const en = {
+  // StepServiceType
+  service_title: "What do you need?",
+  service_subtitle: "Choose the service that fits your needs.",
+  service_zip_label: "ZIP Code",
+  service_zip_placeholder: "90210",
+  service_checking: "Checking your area...",
+  service_area_minimum: "Area minimum: {{sym}}{{min}}",
+  service_unmapped: "We service your area! Contact us for a custom quote",
+  service_enter_zip: "Enter your ZIP code to check availability in your area.",
+
+  // StepItemCatalog
+  catalog_title: "Select your items",
+  catalog_subtitle: "Add everything that needs to be picked up.",
+  catalog_search_placeholder: "Search items...",
+  catalog_all_categories: "All",
+  catalog_add_custom: "Add custom item",
+  catalog_custom_placeholder: "Describe the item...",
+  catalog_add_btn: "Add",
+  catalog_photos_title: "Upload photos",
+  catalog_photos_subtitle: "Photos help us prepare — earn {{pct}}% off your total.",
+  catalog_skip_photos: "Skip — I'll add photos later",
+
+  // StepSchedule
+  schedule_title: "Pick a date & time",
+  schedule_subtitle: "Choose when you'd like us to come.",
+  schedule_no_times: "No time windows available.",
+
+  // StepCustomerDetails
+  details_title: "Your details",
+  details_subtitle: "Tell us where and how to reach you.",
+  details_name: "Full Name",
+  details_phone: "Phone",
+  details_email: "Email",
+  details_address: "Pickup Address",
+  details_address2: "Address Line 2",
+  details_address2_placeholder: "Apt, Suite, Unit, Floor (optional)",
+  details_property_type: "Property Type",
+  details_zip: "ZIP Code",
+  details_gate: "Gate Code",
+  details_notes: "Special Instructions",
+  details_notes_placeholder: "Items are in the garage. Dog is friendly.",
+  details_promo_label: "Promo Code",
+  details_promo_placeholder: "Enter code",
+  details_promo_apply: "Apply",
+  details_promo_applied: "Applied",
+  details_promo_invalid: "Invalid or expired promo code.",
+  details_promo_discount: "Discount applied",
+  property_house: "House",
+  property_building: "Building",
+  property_office: "Office",
+  property_apartment: "Apartment",
+
+  // StepPayment
+  payment_title: "Review & Pay",
+  payment_subtitle_full: "Full payment is required to confirm your booking.",
+  payment_subtitle_deposit: "A {{pct}}% deposit is required to confirm your booking.",
+  payment_terms_label: "I agree to the",
+  payment_terms_link: "Terms of Service",
+  payment_privacy_link: "Cancellation Policy",
+  payment_terms_note: "I understand that pricing may be adjusted on-site based on actual items.",
+  payment_total_due: "Total due",
+  payment_deposit_due: "Deposit due",
+  payment_pay_btn: "Pay {{sym}}{{amount}}",
+  payment_processing: "Processing…",
+  payment_secure: "Your payment is encrypted and secure.",
+  payment_powered_by: "Powered by Stripe",
+  payment_loading: "Loading secure payment form…",
+  payment_failed_title: "Payment failed",
+  payment_demo_note: "Demo mode — Stripe not connected. Click pay to simulate the booking.",
+
+  // Success
+  success_title: "Booking Confirmed!",
+  success_msg: "Thank you, {{name}}. We'll see you on {{date}} during the {{window}} window.",
+  success_email_sent: "A confirmation has been sent to your email.",
+  success_service: "Service",
+  success_items: "Items",
+  success_total_paid: "Total Paid",
+  success_deposit_paid: "Deposit Paid",
+  success_ref: "Ref",
+
+  // OrderSummary
+  summary_title: "Order Summary",
+  summary_service: "Service",
+  summary_date: "Date",
+  summary_time: "Time",
+  summary_items: "Items",
+  summary_subtotal: "Subtotal",
+  summary_photo_discount: "Photo discount",
+  summary_total: "Total",
+  summary_deposit: "Deposit ({pct}%)",
+  summary_empty: "No items selected yet.",
+
+  // Navigation
+  nav_back: "Back",
+  nav_continue: "Continue",
+  nav_confirm: "Confirm booking",
+} as const;
+
+export default en;

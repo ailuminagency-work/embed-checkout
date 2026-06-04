@@ -28,7 +28,7 @@ async function saveBooking(
   payableAmount: number,
   minimumPrice: number | null,
   depositMode: boolean = false,
-): Promise<boolean> {
+): Promise<{ success: boolean; cancelToken?: string }> {
   const result = await createBooking({
     reference: paymentId,
     service_type: state.serviceType ?? "unknown",
@@ -61,22 +61,36 @@ async function saveBooking(
     payment_id: paymentId,
     notes: state.customer.notes || null,
   });
-  return result !== null;
+  if (!result) return { success: false };
+
+  // Fetch the auto-generated cancel_token for the confirmation email
+  try {
+    const { data } = await supabase
+      .from("bookings")
+      .select("cancel_token")
+      .eq("id", result.id)
+      .single();
+    return { success: true, cancelToken: (data as { cancel_token?: string } | null)?.cancel_token };
+  } catch {
+    return { success: true };
+  }
 }
 
 // ── send confirmation email ────────────────────────────────────────────────────
-async function sendConfirmationEmail(state: BookingState, total: number) {
+async function sendConfirmationEmail(state: BookingState, total: number, cancelToken?: string) {
   try {
     await supabase.functions.invoke("send-confirmation", {
       body: {
         customerName: state.customer.name,
         customerEmail: state.customer.email,
+        customerPhone: state.customer.phone || undefined,
         serviceType: state.serviceType,
         scheduleDate: state.selectedDate ? format(state.selectedDate, "MMMM d, yyyy") : null,
         timeWindow: state.selectedTimeWindow?.label,
         items: state.cart.map((c) => ({ name: c.item.name, quantity: c.quantity, price: c.item.price })),
         total,
         reference: state.paymentId,
+        cancelToken,
       },
     });
   } catch (e) {
@@ -336,13 +350,13 @@ export function StepPayment() {
     setPaymentId(paymentId);
     setPaymentStatus("processing");
 
-    const saved = await saveBooking(
+    const { success, cancelToken } = await saveBooking(
       state, paymentId, itemTotal, photoPromoDiscount,
       adjustedItemTotal, total, displayAmount, zipPricing.minimumPrice,
       config.deposit_mode,
     );
 
-    if (!saved) {
+    if (!success) {
       toast({
         variant: "destructive",
         title: "Booking recorded with issues",
@@ -351,7 +365,7 @@ export function StepPayment() {
     }
 
     // Webhook delivery is handled server-side by the DB trigger on bookings INSERT
-    await sendConfirmationEmail({ ...state, paymentId }, displayAmount);
+    await sendConfirmationEmail({ ...state, paymentId }, displayAmount, cancelToken);
 
     trackEvent("booking_confirmed", {
       transaction_id: paymentId,

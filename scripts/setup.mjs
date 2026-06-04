@@ -66,7 +66,10 @@ function hasSupabaseCLI() {
 }
 
 function deployFunctions(projectRef) {
-  const fns = ["create-payment-intent", "deliver-webhook", "send-confirmation", "get-catalog", "v1"];
+  const fns = [
+    "create-payment-intent", "deliver-webhook", "send-confirmation", "get-catalog", "v1",
+    "send-sms", "send-reminder", "cancel-booking", "send-review-request",
+  ];
   for (const fn of fns) {
     process.stdout.write(`  Deploying ${fn}… `);
     const result = spawnSync("supabase", ["functions", "deploy", fn, "--project-ref", projectRef], { stdio: "pipe" });
@@ -158,6 +161,17 @@ const settings = [
   { key: "ga4_measurement_id",          value: "" },
   { key: "google_ads_conversion_id",    value: "" },
   { key: "google_ads_conversion_label", value: "" },
+  { key: "twilio_account_sid",              value: "" },
+  { key: "twilio_auth_token",               value: "" },
+  { key: "twilio_phone_number",             value: "" },
+  { key: "google_business_review_url",      value: "" },
+  { key: "widget_language",                 value: "en" },
+  { key: "site_url",                        value: "" },
+  { key: "cancellation_window_hours",       value: "24" },
+  { key: "addon_booking_reminders_enabled", value: "false" },
+  { key: "addon_cancellation_flow_enabled", value: "false" },
+  { key: "addon_promo_codes_enabled",       value: "false" },
+  { key: "addon_customer_portal_enabled",   value: "false" },
 ];
 
 const { error: settingsErr } = await supabase

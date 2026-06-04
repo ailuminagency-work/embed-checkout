@@ -36,6 +36,15 @@ export interface AppConfig {
   ga4_measurement_id: string;
   google_ads_conversion_id: string;
   google_ads_conversion_label: string;
+
+  // ── i18n ───────────────────────────────────────────────────────────────────
+  widget_language: string;
+
+  // ── Add-on flags (no-key addons toggled via app_settings) ─────────────────
+  addon_promo_codes_enabled: boolean;
+  addon_cancellation_flow_enabled: boolean;
+  addon_booking_reminders_enabled: boolean;
+  addon_customer_portal_enabled: boolean;
 }
 
 export const CONFIG_DEFAULTS: AppConfig = {
@@ -60,6 +69,11 @@ export const CONFIG_DEFAULTS: AppConfig = {
   ga4_measurement_id: "",
   google_ads_conversion_id: "",
   google_ads_conversion_label: "",
+  widget_language: "en",
+  addon_promo_codes_enabled: false,
+  addon_cancellation_flow_enabled: false,
+  addon_booking_reminders_enabled: false,
+  addon_customer_portal_enabled: false,
 };
 
 function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
@@ -92,16 +106,27 @@ function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
     ga4_measurement_id: map.ga4_measurement_id ?? "",
     google_ads_conversion_id: map.google_ads_conversion_id ?? "",
     google_ads_conversion_label: map.google_ads_conversion_label ?? "",
+    widget_language: map.widget_language ?? "en",
+    addon_promo_codes_enabled: map.addon_promo_codes_enabled === "true",
+    addon_cancellation_flow_enabled: map.addon_cancellation_flow_enabled === "true",
+    addon_booking_reminders_enabled: map.addon_booking_reminders_enabled === "true",
+    addon_customer_portal_enabled: map.addon_customer_portal_enabled === "true",
   };
 }
 
 export function useAppConfig() {
   const [config, setConfig] = useState<AppConfig>(CONFIG_DEFAULTS);
+  const [rawSettings, setRawSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     const { data } = await supabase.from("app_settings").select("key, value");
-    if (data) setConfig(parseRows(data));
+    if (data) {
+      const map: Record<string, string> = {};
+      for (const r of data) if (r.value != null) map[r.key] = r.value;
+      setRawSettings(map);
+      setConfig(parseRows(data));
+    }
     setLoading(false);
   }, []);
 
@@ -114,5 +139,5 @@ export function useAppConfig() {
     return () => { supabase.removeChannel(channel); };
   }, [reload]);
 
-  return { config, loading, reload };
+  return { config, rawSettings, loading, reload };
 }

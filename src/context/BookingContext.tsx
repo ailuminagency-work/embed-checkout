@@ -12,6 +12,8 @@ import { useAppConfig, AppConfig, CONFIG_DEFAULTS } from "@/hooks/useAppConfig";
 import { defaultCatalog } from "@/data/defaultCatalog";
 import { ImageSettings, parseImageSettings } from "@/lib/imageSettings";
 import { initTracking, trackEvent } from "@/lib/tracking";
+import { I18nProvider } from "@/i18n";
+import type { Locale } from "@/i18n";
 
 export interface AppImage {
   url: string | null;
@@ -42,6 +44,9 @@ interface BookingContextValue {
   setPaymentId: (id: string) => void;
   setCompleted: (v: boolean) => void;
   setSkipPhotos: (v: boolean) => void;
+  applyPromoCode: (code: string) => Promise<{ valid: boolean; message?: string }>;
+  clearPromoCode: () => void;
+  promoDiscount: number;
   subtotal: number;
   itemTotal: number;
   photoPromoDiscount: number;
@@ -152,6 +157,8 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [zipPricing, setZipPricing] = useState<ZipPricingResult>(idleZipPricing);
   const [zipLookupLoading, setZipLookupLoading] = useState(false);
   const [appImages, setAppImages] = useState<Record<string, AppImage>>({});
+  const [promoCode, setPromoCode] = useState<string | null>(null);
+  const [promoDiscount, setPromoDiscount] = useState(0);
 
   // Persist draft to localStorage after every state change
   useEffect(() => {
@@ -353,6 +360,37 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const setCompleted = useCallback((completed: boolean) => setState((s) => ({ ...s, completed })), []);
   const setSkipPhotos = useCallback((skipPhotos: boolean) => setState((s) => ({ ...s, skipPhotos })), []);
 
+  const applyPromoCode = useCallback(async (code: string): Promise<{ valid: boolean; message?: string }> => {
+    try {
+      const { data, error } = await supabase
+        .from("promo_codes")
+        .select("discount_type, discount_value")
+        .eq("code", code.trim().toUpperCase())
+        .single();
+
+      if (error || !data) {
+        setPromoCode(null);
+        setPromoDiscount(0);
+        return { valid: false, message: "Invalid or expired promo code." };
+      }
+
+      setPromoCode(code.trim().toUpperCase());
+      // Discount is applied to the item total — resolve actual amount at payment time
+      const discount = data.discount_type === "percent"
+        ? Math.round((itemTotal * data.discount_value) / 100)
+        : Math.min(data.discount_value, itemTotal);
+      setPromoDiscount(discount);
+      return { valid: true };
+    } catch {
+      return { valid: false, message: "Could not validate promo code." };
+    }
+  }, [itemTotal]);
+
+  const clearPromoCode = useCallback(() => {
+    setPromoCode(null);
+    setPromoDiscount(0);
+  }, []);
+
   const itemTotal = useMemo(
     () => state.cart.reduce((sum, entry) => sum + entry.item.price * entry.quantity, 0),
     [state.cart],
@@ -365,7 +403,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       : 0),
     [hasPhotos, itemTotal, config.photo_promo_percent],
   );
-  const adjustedItemTotal = useMemo(() => Math.max(itemTotal - photoPromoDiscount, 0), [itemTotal, photoPromoDiscount]);
+  const adjustedItemTotal = useMemo(
+    () => Math.max(itemTotal - photoPromoDiscount - promoDiscount, 0),
+    [itemTotal, photoPromoDiscount, promoDiscount],
+  );
   const total = useMemo(() => {
     if (state.cart.length === 0) return 0;
     if (zipPricing.minimumPrice == null) return adjustedItemTotal;
@@ -429,6 +470,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPaymentId,
     setCompleted,
     setSkipPhotos,
+    applyPromoCode,
+    clearPromoCode,
+    promoDiscount,
     subtotal,
     itemTotal,
     photoPromoDiscount,
@@ -438,5 +482,11 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     canProceed,
   };
 
-  return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;
+  const locale = (["en", "es"].includes(config.widget_language) ? config.widget_language : "en") as Locale;
+
+  return (
+    <I18nProvider locale={locale}>
+      <BookingContext.Provider value={value}>{children}</BookingContext.Provider>
+    </I18nProvider>
+  );
 };

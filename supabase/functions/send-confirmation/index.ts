@@ -18,6 +18,7 @@ interface BookingItem { name: string; quantity: number; price: number; lineTotal
 interface ConfirmationPayload {
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
   serviceType: string;
   scheduleDate: string | null;
   timeWindow: string | null;
@@ -31,6 +32,8 @@ interface ConfirmationPayload {
   minimumPrice?: number | null;
   amountCharged?: number;
   depositMode?: boolean;
+  // Add-ons
+  cancelToken?: string;
 }
 
 interface BusinessConfig {
@@ -38,6 +41,8 @@ interface BusinessConfig {
   contact_email: string;
   currency_symbol: string;
   primary_color: string;
+  site_url: string;
+  addon_cancellation_flow_enabled: string;
 }
 
 async function getBusinessConfig(): Promise<BusinessConfig> {
@@ -48,6 +53,8 @@ async function getBusinessConfig(): Promise<BusinessConfig> {
     contact_email: map.contact_email || "",
     currency_symbol: map.currency_symbol || "$",
     primary_color: map.primary_color || "#0d9488",
+    site_url: map.site_url || "",
+    addon_cancellation_flow_enabled: map.addon_cancellation_flow_enabled || "false",
   };
 }
 
@@ -142,6 +149,9 @@ function buildEmailHtml(data: ConfirmationPayload, cfg: BusinessConfig): string 
       Questions or need to reschedule? ${cfg.contact_email ? `Email us at <a href="mailto:${cfg.contact_email}" style="color:${cfg.primary_color};">${cfg.contact_email}</a>.` : "Reply to this email."}
     </p>
     <p style="margin:0;font-size:12px;color:#9ca3af;">
+      ${cfg.addon_cancellation_flow_enabled === "true" && data.cancelToken && cfg.site_url
+        ? `<a href="${cfg.site_url}/cancel?token=${data.cancelToken}" style="color:#9ca3af;">Need to cancel?</a> · `
+        : ""}
       <a href="#" style="color:#9ca3af;">Cancellation Policy</a>
     </p>
   </td></tr>
@@ -227,6 +237,19 @@ Deno.serve(async (req) => {
     });
 
     if (!result.ok) throw new Error(result.error);
+
+    // Fire SMS confirmation — non-blocking, skips if Twilio not configured
+    if (data.customerPhone) {
+      supabase.functions.invoke("send-sms", {
+        body: {
+          customerPhone: data.customerPhone,
+          customerName: data.customerName,
+          scheduleDate: data.scheduleDate,
+          timeWindow: data.timeWindow,
+          reference: data.reference,
+        },
+      }).catch((e) => console.warn("[send-confirmation] SMS fire failed:", e));
+    }
 
     return new Response(JSON.stringify({ sent: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

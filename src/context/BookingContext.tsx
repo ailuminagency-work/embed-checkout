@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -207,13 +208,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const fetchCatalog = async () => {
       try {
-        if (false) {
-          // catalogEndpoint is no longer used — catalog comes from Supabase directly
-          const response = await fetch("");
-          const data = await response.json();
-          setCatalog(data);
-        } else {
-          const { data, error } = await supabase.functions.invoke("get-catalog");
+        const { data, error } = await supabase.functions.invoke("get-catalog");
           if (error) throw error;
 
           if (Array.isArray(data)) {
@@ -226,7 +221,6 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           } else {
             setCatalog(defaultCatalog);
           }
-        }
       } catch {
         setCatalog(defaultCatalog);
       } finally {

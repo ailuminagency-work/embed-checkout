@@ -164,8 +164,8 @@ export function WebhooksManager() {
       statusCode = res.status;
       success = res.ok;
       if (!res.ok) errorMessage = `HTTP ${res.status} ${res.statusText}`;
-    } catch (e: any) {
-      errorMessage = e?.message || "Network error";
+    } catch (e: unknown) {
+      errorMessage = e instanceof Error ? e.message : "Network error";
     }
 
     // Log the result

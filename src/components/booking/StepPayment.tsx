@@ -429,7 +429,7 @@ export function StepPayment() {
     setPaymentStatus("success");
     setCompleted(true);
   }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, displayAmount, paymentIntentId,
-      zipPricing.minimumPrice, config.stripe_mode, config.currency, config.terms_version,
+      zipPricing.minimumPrice, config.deposit_mode, config.stripe_mode, config.currency, config.terms_version,
       termsAcceptedAt, trackingCfg, setPaymentId, setCompleted, toast]);
 
   const handleError = useCallback((msg: string) => {

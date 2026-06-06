@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ export function OnboardingTab() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const runChecks = async () => {
+  const runChecks = useCallback(async () => {
     setHealth(h => Object.fromEntries(Object.keys(h).map(k => [k, { ...h[k], loading: true }])));
 
     // Stripe check
@@ -82,7 +82,7 @@ export function OnboardingTab() {
       const ok = el.status === "sent";
       setHealth(h => ({ ...h, email: { ok, detail: `Last email: ${el.status} (${new Date(el.created_at).toLocaleDateString()})`, loading: false } }));
     }
-  };
+  }, [config.stripe_publishable_key]);
 
   useEffect(() => {
     // Load current settings into editable form
@@ -90,7 +90,7 @@ export function OnboardingTab() {
       if (data) setSettings(Object.fromEntries(data.map(r => [r.key, r.value ?? ""])));
     });
     runChecks();
-  }, [config.stripe_publishable_key]);
+  }, [runChecks]);
 
   const handleSave = async () => {
     setSaving(true);

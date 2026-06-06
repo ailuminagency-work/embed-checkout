@@ -37,8 +37,8 @@ async function fireWebhook(label: string, url: string, mode: string, payload: ob
     success = res.ok;
     if (!res.ok) errorMessage = `HTTP ${res.status} ${res.statusText}`;
     console.log(`[Webhook:${label}] Response: ${res.status} ${res.statusText}`);
-  } catch (e: any) {
-    errorMessage = e?.message || "Network error";
+  } catch (e: unknown) {
+    errorMessage = e instanceof Error ? e.message : "Network error";
     console.error(`[Webhook:${label}] Failed:`, e);
   }
 

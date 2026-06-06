@@ -24,6 +24,12 @@ export interface AppConfig {
 
   // ── Payments ───────────────────────────────────────────────────────────────
   stripe_publishable_key: string | null;
+  stripe_mode: "test" | "live";
+  stripe_publishable_key_test: string | null;
+  stripe_publishable_key_live: string | null;
+  terms_version: string;
+  receipt_email_enabled: boolean;
+  refund_window_hours: number;
 
   // ── Webhooks ───────────────────────────────────────────────────────────────
   webhook_mode: "test" | "live";
@@ -61,6 +67,12 @@ export const CONFIG_DEFAULTS: AppConfig = {
   zip_code_pattern: /^\d{5}(?:-\d{4})?$/,
   zip_code_pattern_raw: "^\\d{5}(?:-\\d{4})?$",
   stripe_publishable_key: null,
+  stripe_mode: "test",
+  stripe_publishable_key_test: null,
+  stripe_publishable_key_live: null,
+  terms_version: "1.0",
+  receipt_email_enabled: true,
+  refund_window_hours: 24,
   webhook_mode: "test",
   make_webhook_url_test: "",
   make_webhook_url_live: "",
@@ -75,6 +87,15 @@ export const CONFIG_DEFAULTS: AppConfig = {
   addon_booking_reminders_enabled: false,
   addon_customer_portal_enabled: false,
 };
+
+function resolveStripePublishableKey(map: Record<string, string>): string | null {
+  const mode = map.stripe_mode === "live" ? "live" : "test";
+  return (
+    (mode === "live" ? map.stripe_publishable_key_live : map.stripe_publishable_key_test) ||
+    map.stripe_publishable_key ||
+    null
+  );
+}
 
 function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
   const map: Record<string, string> = {};
@@ -97,7 +118,13 @@ function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
     photo_promo_percent: Number(map.photo_promo_percent ?? CONFIG_DEFAULTS.photo_promo_percent),
     zip_code_pattern: pattern,
     zip_code_pattern_raw: patternRaw,
-    stripe_publishable_key: map.stripe_publishable_key ?? null,
+    stripe_publishable_key: resolveStripePublishableKey(map),
+    stripe_mode: (map.stripe_mode === "live" ? "live" : "test") as "test" | "live",
+    stripe_publishable_key_test: map.stripe_publishable_key_test ?? null,
+    stripe_publishable_key_live: map.stripe_publishable_key_live ?? null,
+    terms_version: map.terms_version ?? "1.0",
+    receipt_email_enabled: map.receipt_email_enabled !== "false",
+    refund_window_hours: Number(map.refund_window_hours ?? 24),
     webhook_mode: (map.webhook_mode === "live" ? "live" : "test") as "test" | "live",
     make_webhook_url_test: map.make_webhook_url_test ?? "",
     make_webhook_url_live: map.make_webhook_url_live ?? "",

@@ -18,6 +18,16 @@ import type { BookingState } from "@/types/booking";
 type PaymentStatus = "idle" | "processing" | "success" | "error";
 
 // ── save booking record ────────────────────────────────────────────────────────
+interface StripeExtras {
+  payment_intent_id: string;
+  stripe_mode: string;
+  amount_cents: number;
+  currency: string;
+  terms_accepted_at: string | null;
+  terms_version: string;
+  source: "browser";
+}
+
 async function saveBooking(
   state: BookingState,
   paymentId: string,
@@ -28,6 +38,7 @@ async function saveBooking(
   payableAmount: number,
   minimumPrice: number | null,
   depositMode: boolean = false,
+  stripeExtras?: StripeExtras,
 ): Promise<{ success: boolean; cancelToken?: string }> {
   const result = await createBooking({
     reference: paymentId,
@@ -60,7 +71,8 @@ async function saveBooking(
     deposit_mode: depositMode,
     payment_id: paymentId,
     notes: state.customer.notes || null,
-  });
+    ...(stripeExtras ?? {}),
+  } as Parameters<typeof createBooking>[0]);
   if (!result) return { success: false };
 
   // Fetch the auto-generated cancel_token for the confirmation email
@@ -290,9 +302,12 @@ export function StepPayment() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [verifiedAmount, setVerifiedAmount] = useState<number | null>(null);
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
 
   const stripeKey = config.stripe_publishable_key;
@@ -306,6 +321,11 @@ export function StepPayment() {
     googleAdsConversionLabel: config.google_ads_conversion_label,
   }), [config.tracking_enabled, config.ga4_measurement_id, config.google_ads_conversion_id, config.google_ads_conversion_label]);
 
+  const handleTermsChange = (checked: boolean) => {
+    setAgreedToTerms(checked);
+    setTermsAcceptedAt(checked ? new Date().toISOString() : null);
+  };
+
   // Fire checkout_started once when this step mounts
   useEffect(() => {
     trackEvent("checkout_started", {
@@ -314,18 +334,40 @@ export function StepPayment() {
     }, trackingCfg);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // load stripe + create PaymentIntent with server-calculated amount (Change 3)
+  // Load Stripe + create PaymentIntent with full booking_data for crash recovery
   useEffect(() => {
     if (!useStripeMode || paymentStatus === "success") return;
     setStripeLoading(true);
     setStripePromise(loadStripe(stripeKey!));
 
-    const cartItems = state.cart.map((c) => ({ id: c.item.id, quantity: c.quantity }));
-    const photosUploaded = state.customer.photos.length > 0;
-
     supabase.functions
       .invoke("create-payment-intent", {
-        body: { items: cartItems, zip_code: state.customer.zip, photos_uploaded: photosUploaded },
+        body: {
+          cart: state.cart.map((c) => ({ id: c.item.id, price: c.item.price, quantity: c.quantity })),
+          zip_code: state.customer.zip,
+          photos_uploaded: state.customer.photos.length > 0,
+          schedule_date: state.selectedDate ? format(state.selectedDate, "yyyy-MM-dd") : null,
+          currency: config.currency?.toLowerCase() ?? "usd",
+          booking_data: {
+            service_type: state.serviceType,
+            customer_name: state.customer.name,
+            customer_email: state.customer.email,
+            customer_phone: state.customer.phone,
+            customer_address: state.customer.address,
+            customer_address2: state.customer.address2 ?? null,
+            customer_zip: state.customer.zip,
+            customer_property_type: state.customer.propertyType,
+            customer_gate_code: state.customer.gateCode || null,
+            schedule_date: state.selectedDate ? format(state.selectedDate, "yyyy-MM-dd") : null,
+            schedule_time_window: state.selectedTimeWindow?.label ?? null,
+            items: state.cart.map((c) => ({
+              id: c.item.id, name: c.item.name, price: c.item.price,
+              quantity: c.quantity, lineTotal: c.item.price * c.quantity,
+            })),
+            custom_items: state.customItems,
+            notes: state.customer.notes || null,
+          },
+        },
       })
       .then(({ data, error }) => {
         if (error || !data?.client_secret) {
@@ -333,16 +375,18 @@ export function StepPayment() {
         } else {
           setClientSecret(data.client_secret);
           setVerifiedAmount(data.verified_amount);
-          if (data.verified_amount !== payableAmount) {
+          setPendingBookingId(data.pending_booking_id ?? null);
+          setPaymentIntentId(data.payment_intent_id ?? null);
+          if (Math.abs((data.verified_amount ?? 0) - payableAmount) > 0.5) {
             toast({
-              title: "Price adjusted",
-              description: `Your total has been verified at ${sym}${data.verified_amount}.`,
+              title: "Price updated",
+              description: `Your total has been confirmed at ${sym}${data.verified_amount}.`,
             });
           }
         }
         setStripeLoading(false);
       });
-  }, [useStripeMode, stripeKey, state.cart, state.customer.zip, state.customer.photos.length]);
+  }, [useStripeMode, stripeKey, state.cart, state.customer.zip, state.customer.photos.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayAmount = verifiedAmount ?? payableAmount;
 
@@ -353,7 +397,15 @@ export function StepPayment() {
     const { success, cancelToken } = await saveBooking(
       state, paymentId, itemTotal, photoPromoDiscount,
       adjustedItemTotal, total, displayAmount, zipPricing.minimumPrice,
-      config.deposit_mode,
+      config.deposit_mode, {
+        payment_intent_id: paymentIntentId ?? paymentId,
+        stripe_mode: config.stripe_mode,
+        amount_cents: Math.round(displayAmount * 100),
+        currency: config.currency?.toLowerCase() ?? "usd",
+        terms_accepted_at: termsAcceptedAt,
+        terms_version: config.terms_version,
+        source: "browser" as const,
+      },
     );
 
     if (!success) {
@@ -376,8 +428,9 @@ export function StepPayment() {
 
     setPaymentStatus("success");
     setCompleted(true);
-  }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, displayAmount,
-      zipPricing.minimumPrice, config.currency, trackingCfg, setPaymentId, setCompleted, toast]);
+  }, [state, itemTotal, photoPromoDiscount, adjustedItemTotal, total, displayAmount, paymentIntentId,
+      zipPricing.minimumPrice, config.stripe_mode, config.currency, config.terms_version,
+      termsAcceptedAt, trackingCfg, setPaymentId, setCompleted, toast]);
 
   const handleError = useCallback((msg: string) => {
     setErrorMessage(msg);
@@ -419,7 +472,7 @@ export function StepPayment() {
         <Checkbox
           id="terms"
           checked={agreedToTerms}
-          onCheckedChange={(c) => setAgreedToTerms(c === true)}
+          onCheckedChange={(c) => handleTermsChange(c === true)}
           disabled={paymentStatus === "processing"}
           className="mt-0.5"
         />

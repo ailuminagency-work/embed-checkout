@@ -74,6 +74,10 @@ interface Booking {
   amount_charged: number;
   deposit_mode: boolean;
   payment_id: string | null;
+  payment_intent_id: string | null;
+  stripe_mode: string | null;
+  amount_cents: number | null;
+  source: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -107,6 +111,9 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === "cancelled") {
     return <Badge variant="destructive">Cancelled</Badge>;
+  }
+  if (status === "refunded") {
+    return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">Refunded</Badge>;
   }
   return <Badge variant="secondary">{status}</Badge>;
 }
@@ -181,6 +188,7 @@ function BookingDetailSheet({
       toast({ title: "Webhook replayed successfully" });
     }
   };
+
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
@@ -381,6 +389,22 @@ function BookingDetailSheet({
                     <span className="font-mono text-xs text-muted-foreground truncate max-w-[180px]">
                       {booking.payment_id}
                     </span>
+                  </div>
+                )}
+                {booking.payment_intent_id && (
+                  <div className="flex justify-between pt-1">
+                    <span className="text-muted-foreground">Stripe PI</span>
+                    <span className="font-mono text-xs text-muted-foreground truncate max-w-[180px]">
+                      {booking.payment_intent_id}
+                    </span>
+                  </div>
+                )}
+                {booking.stripe_mode && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Mode</span>
+                    <Badge variant={booking.stripe_mode === "live" ? "default" : "secondary"} className="text-xs h-5">
+                      {booking.stripe_mode}
+                    </Badge>
                   </div>
                 )}
               </div>

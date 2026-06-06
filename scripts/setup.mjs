@@ -67,7 +67,9 @@ function hasSupabaseCLI() {
 
 function deployFunctions(projectRef) {
   const fns = [
-    "create-payment-intent", "deliver-webhook", "send-confirmation", "get-catalog", "v1",
+    "create-payment-intent", "stripe-webhook", "refund-booking",
+    "reconcile-payments", "send-admin-alert",
+    "deliver-webhook", "send-confirmation", "get-catalog", "v1",
     "send-sms", "send-reminder", "cancel-booking", "send-review-request",
   ];
   for (const fn of fns) {
@@ -143,18 +145,24 @@ const webhookMode = makeLive.trim() ? "live" : "test";
 step(5, 5, "Running Setup...");
 
 // Upsert app_settings
+const isLiveKey = stripePubKey.trim().startsWith("pk_live_");
 const settings = [
   { key: "company_name",          value: companyName },
   { key: "contact_email",         value: contactEmail },
   { key: "currency",              value: currency },
   { key: "currency_symbol",       value: currencySymbol },
-  { key: "stripe_publishable_key", value: stripePubKey.trim() || null },
+  { key: "stripe_mode",           value: isLiveKey ? "live" : "test" },
+  { key: "stripe_publishable_key_test", value: isLiveKey ? "" : stripePubKey.trim() },
+  { key: "stripe_publishable_key_live", value: isLiveKey ? stripePubKey.trim() : "" },
   { key: "webhook_mode",          value: webhookMode },
   { key: "make_webhook_url_test", value: makeTest.trim() },
   { key: "make_webhook_url_live", value: makeLive.trim() },
   { key: "twin_webhook_url",      value: twinUrl.trim() },
   { key: "deposit_mode",                value: "false" },
   { key: "deposit_percentage",          value: "25" },
+  { key: "refund_window_hours",         value: "24" },
+  { key: "terms_version",               value: "1.0" },
+  { key: "receipt_email_enabled",       value: "true" },
   { key: "photo_promo_percent",         value: "5" },
   { key: "zip_code_pattern",            value: "^\\d{5}(?:-\\d{4})?$" },
   { key: "tracking_enabled",            value: "false" },
@@ -181,17 +189,18 @@ const { error: settingsErr } = await supabase
 if (settingsErr) { fail(`Settings save failed: ${settingsErr.message}`); }
 else { ok("App settings saved"); }
 
-// Store Stripe secret in webhook_settings (for backward compat) and log instructions for Vault
+// Log Vault instructions for all secrets
 if (stripeValid && stripeSecKey.trim()) {
-  console.log("\n  ⚠  Stripe Secret Key — manual step required:");
-  console.log("     Supabase Dashboard → Database → Vault → Add Secret");
-  console.log("     Name: STRIPE_SECRET_KEY");
-  console.log("     Value: <your secret key>");
-
-  console.log("\n  ⚠  Webhook trigger key — manual step required:");
-  console.log("     Add another Vault secret:");
-  console.log("     Name: WEBHOOK_TRIGGER_KEY");
-  console.log("     Value: <your service role key>");
+  const isLive = stripeSecKey.trim().startsWith("sk_live_");
+  const keyName = isLive ? "STRIPE_SECRET_KEY_LIVE" : "STRIPE_SECRET_KEY_TEST";
+  const webhookSecretName = isLive ? "STRIPE_WEBHOOK_SECRET_LIVE" : "STRIPE_WEBHOOK_SECRET_TEST";
+  console.log("\n  ⚠  Stripe secrets — add to Supabase Vault manually:");
+  console.log("     Dashboard → Database → Vault → Add Secret");
+  console.log(`     Name: ${keyName}  →  Value: ${stripeSecKey.trim().substring(0, 8)}…`);
+  console.log(`     Name: ${webhookSecretName}  →  Value: whsec_… (from Stripe dashboard)`);
+  console.log("\n  ⚠  Webhook trigger key:");
+  console.log("     Name: WEBHOOK_TRIGGER_KEY  →  Value: <your service role key>");
+  console.log("     Name: RESEND_API_KEY  →  Value: <your Resend API key>");
 }
 
 // Migrations

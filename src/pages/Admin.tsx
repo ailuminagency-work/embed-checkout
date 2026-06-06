@@ -17,6 +17,7 @@ import { ServiceTypeManager } from "@/components/admin/ServiceTypeManager";
 import { OnboardingTab } from "@/components/admin/OnboardingTab";
 import { TrackingManager } from "@/components/admin/TrackingManager";
 import { AddonsManager } from "@/components/admin/AddonsManager";
+import { PaymentsManager } from "@/components/admin/PaymentsManager";
 
 const sectionTitles: Record<AdminSection, string> = {
   bookings:       "Bookings",
@@ -32,6 +33,7 @@ const sectionTitles: Record<AdminSection, string> = {
   onboarding:     "Setup & Onboarding",
   tracking:       "Analytics & Tracking",
   addons:         "Add-ons",
+  payments:       "Payments & Stripe",
 };
 
 export default function Admin() {
@@ -79,6 +81,7 @@ export default function Admin() {
           {section === "onboarding"    && <OnboardingTab />}
           {section === "tracking"      && <TrackingManager />}
           {section === "addons"        && <AddonsManager />}
+          {section === "payments"      && <PaymentsManager />}
         </main>
       </div>
     </div>

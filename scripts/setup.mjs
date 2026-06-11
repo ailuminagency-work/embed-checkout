@@ -68,7 +68,7 @@ function hasSupabaseCLI() {
 function deployFunctions(projectRef) {
   const fns = [
     "create-payment-intent", "stripe-webhook", "refund-booking",
-    "reconcile-payments", "send-admin-alert",
+    "reconcile-payments", "reconcile-bookings", "send-admin-alert",
     "deliver-webhook", "send-confirmation", "get-catalog", "v1",
     "send-sms", "send-reminder", "cancel-booking", "send-review-request",
   ];
@@ -180,6 +180,8 @@ const settings = [
   { key: "addon_cancellation_flow_enabled", value: "false" },
   { key: "addon_promo_codes_enabled",       value: "false" },
   { key: "addon_customer_portal_enabled",   value: "false" },
+  { key: "outbound_webhook_url",            value: "" },
+  { key: "outbound_webhook_secret",         value: "" },
 ];
 
 const { error: settingsErr } = await supabase
@@ -200,7 +202,12 @@ if (stripeValid && stripeSecKey.trim()) {
   console.log(`     Name: ${webhookSecretName}  →  Value: whsec_… (from Stripe dashboard)`);
   console.log("\n  ⚠  Webhook trigger key:");
   console.log("     Name: WEBHOOK_TRIGGER_KEY  →  Value: <your service role key>");
-  console.log("     Name: RESEND_API_KEY  →  Value: <your Resend API key>");
+  console.log("\n  ⚠  Email (pick ONE — SMTP is preferred, no new accounts needed):");
+  console.log("     SMTP via Gmail/Outlook App Password:");
+  console.log("       EMAIL_HOST=smtp.gmail.com  EMAIL_PORT=587");
+  console.log("       EMAIL_USER=<your email>  EMAIL_PASSWORD=<App Password>");
+  console.log("       EMAIL_FROM_NAME=<business name>");
+  console.log("     OR Resend: RESEND_API_KEY=<key>");
 }
 
 // Migrations

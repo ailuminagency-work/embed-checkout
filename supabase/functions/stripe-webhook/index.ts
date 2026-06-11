@@ -1,6 +1,9 @@
-// Stripe webhook handler — authoritative source for booking creation.
-// Handles: payment_intent.succeeded, payment_intent.payment_failed, charge.refunded
-// Idempotent: duplicate Stripe events are deduplicated via stripe_event_id UNIQUE constraint.
+// Stripe webhook handler — the authoritative booking confirmation point.
+// The system IS the webhook: it confirms the booking, sends the email itself,
+// logs every step to booking_events, and fires the optional outbound webhook.
+// Make.com/Zapier is a non-blocking add-on — never in the critical path.
+//
+// Idempotent: duplicate Stripe events are deduplicated via stripe_event_id UNIQUE.
 
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -9,6 +12,82 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
+
+async function logEvent(
+  bookingId: string | null,
+  eventType: string,
+  payload: Record<string, unknown>,
+  source = "stripe_webhook",
+) {
+  try {
+    await supabase.from("booking_events").insert({
+      booking_id: bookingId, event_type: eventType, payload, source,
+    });
+  } catch { /* logging must never crash the main flow */ }
+}
+
+// Optional outbound integration (Make.com / Zapier). Best-effort, non-blocking:
+// a failure here is just a log entry — the booking is already confirmed.
+async function fireOutboundWebhook(bookingId: string, booking: Record<string, unknown>) {
+  try {
+    const { data: settings } = await supabase
+      .from("app_settings")
+      .select("key, value")
+      .in("key", ["outbound_webhook_url", "outbound_webhook_secret"]);
+    const cfg = Object.fromEntries(
+      (settings ?? []).map((s: { key: string; value: string | null }) => [s.key, s.value ?? ""]),
+    );
+    if (!cfg.outbound_webhook_url) return; // not configured — skip silently
+
+    const payload = {
+      event: "booking.confirmed",
+      booking_id: bookingId,
+      reference: booking.reference,
+      service_type: booking.service_type,
+      schedule: { date: booking.schedule_date, time_window: booking.schedule_time_window },
+      customer: {
+        name: booking.customer_name,
+        email: booking.customer_email,
+        phone: booking.customer_phone,
+        address: booking.customer_address,
+        zip: booking.customer_zip,
+      },
+      items: booking.items,
+      amount_charged: booking.amount_charged,
+      timestamp: new Date().toISOString(),
+    };
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const body = JSON.stringify(payload);
+    if (cfg.outbound_webhook_secret) {
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        "raw", encoder.encode(cfg.outbound_webhook_secret),
+        { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+      );
+      const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
+      headers["X-Webhook-Signature"] = Array.from(new Uint8Array(signature))
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    const res = await fetch(cfg.outbound_webhook_url, { method: "POST", headers, body });
+    await logEvent(bookingId, res.ok ? "outbound_webhook.sent" : "outbound_webhook.failed", {
+      url: cfg.outbound_webhook_url, status: res.status,
+    });
+  } catch (err) {
+    await logEvent(bookingId, "outbound_webhook.error", { error: String(err) });
+  }
+}
+
+async function sendConfirmation(bookingId: string) {
+  try {
+    await supabase.functions.invoke("send-confirmation", {
+      body: { booking_id: bookingId, source: "stripe_webhook" },
+    });
+  } catch (e) {
+    await logEvent(bookingId, "email.failed", { error: String(e) });
+  }
+}
 
 Deno.serve(async (req: Request) => {
   const signature = req.headers.get("stripe-signature");
@@ -41,10 +120,11 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!event) {
+    await logEvent(null, "stripe_webhook.invalid_signature", {});
     return new Response("Invalid webhook signature", { status: 400 });
   }
 
-  // Idempotency guard
+  // Idempotency guard — Stripe retries deliveries; process each event once.
   const { data: existing } = await supabase
     .from("payment_events")
     .select("id")
@@ -75,15 +155,36 @@ Deno.serve(async (req: Request) => {
       customer_email: metadata.customer_email ?? null,
     });
 
-    // Check if browser already created the booking
+    // Did the browser already create the booking?
     const { data: existingBooking } = await supabase
       .from("bookings")
       .select("id")
       .eq("payment_intent_id", pi.id)
       .maybeSingle();
 
-    if (!existingBooking && pendingBookingId) {
-      // Browser crashed / closed — recover from pending_bookings
+    if (existingBooking) {
+      // Browser path: booking exists — mark pending done, ensure email goes out.
+      if (pendingBookingId) {
+        await supabase
+          .from("pending_bookings")
+          .update({ status: "completed" })
+          .eq("id", pendingBookingId);
+      }
+      await supabase
+        .from("bookings")
+        .update({ payment_intent_id: pi.id, stripe_mode: stripeMode })
+        .eq("id", existingBooking.id)
+        .is("payment_intent_id", null);
+
+      await logEvent(existingBooking.id, "booking.confirmed", {
+        payment_intent_id: pi.id, amount_cents: pi.amount, path: "browser",
+      });
+      await sendConfirmation(existingBooking.id);
+
+      const { data: full } = await supabase.from("bookings").select("*").eq("id", existingBooking.id).single();
+      if (full) await fireOutboundWebhook(existingBooking.id, full);
+    } else if (pendingBookingId) {
+      // Recovery path: browser crashed/closed — confirm from pending_bookings.
       const { data: pending } = await supabase
         .from("pending_bookings")
         .select("booking_data")
@@ -93,7 +194,7 @@ Deno.serve(async (req: Request) => {
 
       if (pending?.booking_data) {
         const bd = pending.booking_data as Record<string, unknown>;
-        const { error: bookingError } = await supabase.from("bookings").insert({
+        const { data: inserted, error: bookingError } = await supabase.from("bookings").insert({
           reference: pi.id,
           payment_id: pi.id,
           payment_intent_id: pi.id,
@@ -125,46 +226,33 @@ Deno.serve(async (req: Request) => {
           customer_ip: bd.customer_ip ?? null,
           terms_version: bd.terms_version ?? null,
           notes: bd.notes ?? null,
-        });
+        }).select("id").single();
 
-        if (!bookingError) {
+        if (!bookingError && inserted) {
           await supabase
             .from("pending_bookings")
             .update({ status: "completed" })
             .eq("id", pendingBookingId);
 
-          await supabase.functions.invoke("send-confirmation", {
-            body: {
-              customerName: bd.customer_name,
-              customerEmail: bd.customer_email,
-              serviceType: bd.service_type,
-              scheduleDate: bd.schedule_date,
-              timeWindow: bd.schedule_time_window,
-              items: bd.items,
-              total: bd.amount_charged ?? pi.amount / 100,
-              reference: pi.id,
-            },
+          await logEvent(inserted.id, "booking.confirmed", {
+            payment_intent_id: pi.id, amount_cents: pi.amount, path: "crash_recovery",
           });
+          await sendConfirmation(inserted.id);
+
+          const { data: full } = await supabase.from("bookings").select("*").eq("id", inserted.id).single();
+          if (full) await fireOutboundWebhook(inserted.id, full);
 
           console.log(`[stripe-webhook] Booking recovered from crash: ${pi.id}`);
         } else {
-          console.error(`[stripe-webhook] Failed to recover booking: ${bookingError.message}`);
+          await logEvent(null, "booking.create_failed", {
+            payment_intent_id: pi.id, error: bookingError?.message ?? "unknown",
+          });
+          console.error(`[stripe-webhook] Failed to recover booking: ${bookingError?.message}`);
+          // Return 200 — the reconciliation cron retries within 5 minutes.
         }
+      } else {
+        await logEvent(null, "stripe_webhook.pending_not_found", { payment_intent_id: pi.id });
       }
-    } else if (existingBooking) {
-      // Browser completed it — mark pending as done
-      if (pendingBookingId) {
-        await supabase
-          .from("pending_bookings")
-          .update({ status: "completed" })
-          .eq("id", pendingBookingId);
-      }
-      // Stamp payment_intent_id onto the booking if not already set
-      await supabase
-        .from("bookings")
-        .update({ payment_intent_id: pi.id, stripe_mode: stripeMode })
-        .eq("id", existingBooking.id)
-        .is("payment_intent_id", null);
     }
   }
 
@@ -199,7 +287,7 @@ Deno.serve(async (req: Request) => {
     const charge = event.data.object as Stripe.Charge;
     const refund = charge.refunds?.data?.[0];
 
-    await supabase
+    const { data: refundedBooking } = await supabase
       .from("bookings")
       .update({
         status: "cancelled",
@@ -207,7 +295,9 @@ Deno.serve(async (req: Request) => {
         refunded_at: new Date().toISOString(),
         refund_amount_cents: refund?.amount ?? charge.amount_refunded,
       })
-      .eq("payment_intent_id", charge.payment_intent as string);
+      .eq("payment_intent_id", charge.payment_intent as string)
+      .select("id")
+      .maybeSingle();
 
     await supabase.from("payment_events").insert({
       payment_intent_id: charge.payment_intent as string,
@@ -216,6 +306,12 @@ Deno.serve(async (req: Request) => {
       stripe_mode: stripeMode,
       amount_cents: refund?.amount ?? charge.amount_refunded,
       currency: charge.currency,
+    });
+
+    await logEvent(refundedBooking?.id ?? null, "booking.cancelled", {
+      payment_intent_id: charge.payment_intent,
+      refund_amount_cents: refund?.amount ?? charge.amount_refunded,
+      reason: "charge.refunded",
     });
   }
 

@@ -127,6 +127,22 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "Booking not found" }), { status: 404 });
   }
 
+  // Outbound webhooks are an OPTIONAL add-on. If nothing is configured,
+  // skip silently with zero overhead — the booking is already confirmed
+  // and emailed by the internal event system.
+  const { data: earlySettings } = await supabase
+    .from("webhook_settings")
+    .select("active_mode, test_url, live_url, twin_url")
+    .limit(1)
+    .maybeSingle();
+
+  if (!earlySettings || (!earlySettings.test_url && !earlySettings.live_url && !earlySettings.twin_url)) {
+    return new Response(
+      JSON.stringify({ skipped: true, reason: "no outbound webhook configured" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   // Create or look up the queue entry
   let queueId = existingQueueId;
   if (!queueId) {
@@ -149,24 +165,7 @@ Deno.serve(async (req: Request) => {
     currentAttempts = q?.attempts ?? 0;
   }
 
-  // Fetch webhook settings
-  const { data: settings } = await supabase
-    .from("webhook_settings")
-    .select("active_mode, test_url, live_url, twin_url")
-    .limit(1)
-    .single();
-
-  if (!settings || (!settings.test_url && !settings.live_url)) {
-    if (queueId) {
-      await supabase.from("webhook_queue").update({
-        status: "failed",
-        attempts: currentAttempts + 1,
-        last_error: "No webhook URLs configured",
-      }).eq("id", queueId);
-    }
-    return new Response(JSON.stringify({ ok: false, error: "No webhook URLs configured" }), { status: 200 });
-  }
-
+  const settings = earlySettings;
   const mode = settings.active_mode ?? "test";
   const primaryUrl = mode === "live" ? settings.live_url : settings.test_url;
   const twinUrl = settings.twin_url || null;

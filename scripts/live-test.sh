@@ -157,6 +157,14 @@ else
   report FAIL "out-of-area ZIP: HTTP $CODE8, verified=$V8 (expected $ITEM_PRICE)"
 fi
 
+# ── T9b: send-confirmation is internal-only (anon must be rejected) ──
+CODE9B=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$URL/functions/v1/send-confirmation" \
+  "${AUTH[@]}" -H "Content-Type: application/json" -d '{"booking_id":"00000000-0000-0000-0000-000000000000"}')
+echo "--- T9b: send-confirmation with anon key HTTP $CODE9B ---"
+if [ "$CODE9B" = "403" ]; then report PASS "send-confirmation locked to service role (browser cannot trigger emails)"
+elif [ "$CODE9B" = "404" ]; then report FAIL "send-confirmation not deployed"
+else report FAIL "send-confirmation returned $CODE9B with anon key (expected 403)"; fi
+
 # ── T9: get-catalog edge function ──
 CODE9=$(curl -s -o /tmp/cat.txt -w "%{http_code}" "$URL/functions/v1/get-catalog" "${AUTH[@]}")
 N9=$(jq 'length' /tmp/cat.txt 2>/dev/null || echo "?")

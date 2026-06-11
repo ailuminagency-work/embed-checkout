@@ -1,40 +1,19 @@
-// Change 7: Hardened confirmation email — reads config from DB, full itemized HTML,
-// logs delivery to email_logs table, retries once on transient failure.
+// INTERNAL ONLY — called by stripe-webhook and reconcile-bookings with the
+// service role key. The browser can no longer trigger emails.
+//
+// Accepts { booking_id } and derives everything from the bookings row, so the
+// caller cannot spoof amounts or recipients. Sends via SMTP (Gmail/Outlook)
+// with Resend fallback, logs to email_logs + booking_events, fires SMS.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendEmail } from "../_shared/email.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
 interface BookingItem { name: string; quantity: number; price: number; lineTotal?: number; }
-
-interface ConfirmationPayload {
-  customerName: string;
-  customerEmail: string;
-  customerPhone?: string;
-  serviceType: string;
-  scheduleDate: string | null;
-  timeWindow: string | null;
-  items: BookingItem[];
-  total: number;
-  reference: string | null;
-  // Extended fields from Change 7
-  itemTotal?: number;
-  photoPromoDiscount?: number;
-  adjustedItemTotal?: number;
-  minimumPrice?: number | null;
-  amountCharged?: number;
-  depositMode?: boolean;
-  // Add-ons
-  cancelToken?: string;
-}
 
 interface BusinessConfig {
   company_name: string;
@@ -59,10 +38,27 @@ async function getBusinessConfig(): Promise<BusinessConfig> {
 }
 
 function formatServiceLabel(slug: string): string {
-  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  return slug.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-function buildEmailHtml(data: ConfirmationPayload, cfg: BusinessConfig): string {
+interface EmailData {
+  customerName: string;
+  serviceType: string;
+  scheduleDate: string | null;
+  timeWindow: string | null;
+  items: BookingItem[];
+  total: number;
+  reference: string | null;
+  itemTotal: number | null;
+  photoPromoDiscount: number | null;
+  adjustedItemTotal: number | null;
+  minimumPrice: number | null;
+  amountCharged: number | null;
+  depositMode: boolean;
+  cancelToken: string | null;
+}
+
+function buildEmailHtml(data: EmailData, cfg: BusinessConfig): string {
   const sym = cfg.currency_symbol;
   const itemRows = data.items.map((i) =>
     `<tr>
@@ -71,8 +67,8 @@ function buildEmailHtml(data: ConfirmationPayload, cfg: BusinessConfig): string 
     </tr>`
   ).join("");
 
-  const hasDiscount = data.photoPromoDiscount && data.photoPromoDiscount > 0;
-  const hasMinimum  = data.minimumPrice && data.minimumPrice > (data.adjustedItemTotal ?? 0);
+  const hasDiscount = data.photoPromoDiscount != null && data.photoPromoDiscount > 0;
+  const hasMinimum  = data.minimumPrice != null && data.minimumPrice > (data.adjustedItemTotal ?? 0);
 
   return `<!DOCTYPE html>
 <html>
@@ -139,7 +135,7 @@ function buildEmailHtml(data: ConfirmationPayload, cfg: BusinessConfig): string 
       </tr>` : `
       <tr>
         <td style="padding:8px 0;font-size:15px;font-weight:700;color:#111827;">Total charged</td>
-        <td style="padding:8px 0;font-size:15px;font-weight:700;color:#111827;text-align:right;">${sym}${data.total.toFixed(2)}</td>
+        <td style="padding:8px 0;font-size:15px;font-weight:700;color:#111827;text-align:right;">${sym}${(data.amountCharged ?? data.total).toFixed(2)}</td>
       </tr>`}
     </table>
 
@@ -150,9 +146,8 @@ function buildEmailHtml(data: ConfirmationPayload, cfg: BusinessConfig): string 
     </p>
     <p style="margin:0;font-size:12px;color:#9ca3af;">
       ${cfg.addon_cancellation_flow_enabled === "true" && data.cancelToken && cfg.site_url
-        ? `<a href="${cfg.site_url}/cancel?token=${data.cancelToken}" style="color:#9ca3af;">Need to cancel?</a> · `
+        ? `<a href="${cfg.site_url}/cancel?token=${data.cancelToken}" style="color:#9ca3af;">Need to cancel?</a>`
         : ""}
-      <a href="#" style="color:#9ca3af;">Cancellation Policy</a>
     </p>
   </td></tr>
 
@@ -167,98 +162,124 @@ function buildEmailHtml(data: ConfirmationPayload, cfg: BusinessConfig): string 
 </html>`;
 }
 
-async function sendEmail(
-  resendKey: string,
-  fromEmail: string,
-  to: string,
-  subject: string,
-  html: string,
-): Promise<{ ok: boolean; error?: string }> {
+async function logEvent(bookingId: string | null, eventType: string, payload: Record<string, unknown>, source = "system") {
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: fromEmail, to, subject, html }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, error: `Resend ${res.status}: ${text}` };
-    }
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: String(e) };
-  }
+    await supabase.from("booking_events").insert({ booking_id: bookingId, event_type: eventType, payload, source });
+  } catch { /* logging must never crash the flow */ }
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "bookings@resend.dev";
-
-  if (!RESEND_API_KEY) {
-    console.warn("[send-confirmation] RESEND_API_KEY not set — skipping");
-    await supabase.from("email_logs").insert({ recipient: "unknown", status: "skipped", subject: "RESEND_API_KEY missing" });
-    return new Response(JSON.stringify({ skipped: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  // Internal only: caller must present the service role key.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  if (!authHeader.includes(serviceKey)) {
+    return new Response(JSON.stringify({ error: "Forbidden — internal function" }), {
+      status: 403, headers: { "Content-Type": "application/json" },
     });
   }
 
   try {
-    const data: ConfirmationPayload = await req.json();
-
-    if (!data.customerEmail) {
-      return new Response(JSON.stringify({ error: "No customer email" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const { booking_id, source = "system" } = await req.json() as { booking_id?: string; source?: string };
+    if (!booking_id) {
+      return new Response(JSON.stringify({ error: "booking_id required" }), {
+        status: 400, headers: { "Content-Type": "application/json" },
       });
     }
 
-    const [cfg] = await Promise.all([getBusinessConfig()]);
-    const subject = `Booking Confirmed — ${data.scheduleDate ?? "Your Upcoming Service"} · ${cfg.company_name}`;
-    const html = buildEmailHtml(data, cfg);
+    const { data: booking, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("id", booking_id)
+      .single();
 
-    // First attempt
-    let result = await sendEmail(RESEND_API_KEY, FROM_EMAIL, data.customerEmail, subject, html);
+    if (error || !booking) {
+      return new Response(JSON.stringify({ error: "Booking not found" }), {
+        status: 404, headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (!booking.customer_email) {
+      return new Response(JSON.stringify({ skipped: true, reason: "no customer email" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-    // Retry once after 30s on transient failure
+    // Idempotency: don't email the same booking twice.
+    const { data: alreadySent } = await supabase
+      .from("booking_events")
+      .select("id")
+      .eq("booking_id", booking_id)
+      .eq("event_type", "email.sent")
+      .limit(1)
+      .maybeSingle();
+    if (alreadySent) {
+      return new Response(JSON.stringify({ skipped: true, reason: "already sent" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const cfg = await getBusinessConfig();
+    const emailData: EmailData = {
+      customerName: booking.customer_name ?? "there",
+      serviceType: booking.service_type ?? "service",
+      scheduleDate: booking.schedule_date,
+      timeWindow: booking.schedule_time_window,
+      items: Array.isArray(booking.items) ? booking.items as BookingItem[] : [],
+      total: Number(booking.final_total ?? 0),
+      reference: booking.reference,
+      itemTotal: booking.item_total != null ? Number(booking.item_total) : null,
+      photoPromoDiscount: booking.photo_promo_discount != null ? Number(booking.photo_promo_discount) : null,
+      adjustedItemTotal: booking.adjusted_item_total != null ? Number(booking.adjusted_item_total) : null,
+      minimumPrice: booking.minimum_price != null ? Number(booking.minimum_price) : null,
+      amountCharged: booking.amount_charged != null ? Number(booking.amount_charged) : null,
+      depositMode: booking.deposit_mode === true,
+      cancelToken: (booking as Record<string, unknown>).cancel_token as string | null ?? null,
+    };
+
+    const subject = `Booking Confirmed — ${booking.schedule_date ?? "Your Upcoming Service"} · ${cfg.company_name}`;
+    const html = buildEmailHtml(emailData, cfg);
+
+    let result = await sendEmail(booking.customer_email, subject, html);
     if (!result.ok) {
-      await new Promise((r) => setTimeout(r, 30_000));
-      result = await sendEmail(RESEND_API_KEY, FROM_EMAIL, data.customerEmail, subject, html);
+      // one retry on transient failure
+      await new Promise((r) => setTimeout(r, 5_000));
+      result = await sendEmail(booking.customer_email, subject, html);
     }
 
     await supabase.from("email_logs").insert({
-      booking_ref: data.reference,
-      recipient: data.customerEmail,
+      booking_ref: booking.reference,
+      recipient: booking.customer_email,
       subject,
       status: result.ok ? "sent" : "failed",
       error: result.error ?? null,
     });
+    await logEvent(booking_id, result.ok ? "email.sent" : "email.failed", {
+      to: booking.customer_email,
+      provider: result.provider ?? null,
+      error: result.error ?? null,
+    }, source);
 
-    if (!result.ok) throw new Error(result.error);
-
-    // Fire SMS confirmation — non-blocking, skips if Twilio not configured
-    if (data.customerPhone) {
+    // SMS confirmation — non-blocking, skips silently if Twilio not configured
+    if (result.ok && booking.customer_phone) {
       supabase.functions.invoke("send-sms", {
         body: {
-          customerPhone: data.customerPhone,
-          customerName: data.customerName,
-          scheduleDate: data.scheduleDate,
-          timeWindow: data.timeWindow,
-          reference: data.reference,
+          customerPhone: booking.customer_phone,
+          customerName: booking.customer_name,
+          scheduleDate: booking.schedule_date,
+          timeWindow: booking.schedule_time_window,
+          reference: booking.reference,
         },
       }).catch((e) => console.warn("[send-confirmation] SMS fire failed:", e));
     }
 
-    return new Response(JSON.stringify({ sent: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ sent: result.ok, provider: result.provider, error: result.error ?? null }), {
+      status: result.ok ? 200 : 502,
+      headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[send-confirmation]", message);
     return new Response(JSON.stringify({ error: message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { "Content-Type": "application/json" },
     });
   }
 });

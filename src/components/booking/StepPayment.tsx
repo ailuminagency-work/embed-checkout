@@ -39,7 +39,7 @@ async function saveBooking(
   minimumPrice: number | null,
   depositMode: boolean = false,
   stripeExtras?: StripeExtras,
-): Promise<{ success: boolean; cancelToken?: string }> {
+): Promise<{ success: boolean }> {
   const result = await createBooking({
     reference: paymentId,
     service_type: state.serviceType ?? "unknown",
@@ -73,42 +73,11 @@ async function saveBooking(
     notes: state.customer.notes || null,
     ...(stripeExtras ?? {}),
   } as Parameters<typeof createBooking>[0]);
-  if (!result) return { success: false };
-
-  // Fetch the auto-generated cancel_token for the confirmation email
-  try {
-    const { data } = await supabase
-      .from("bookings")
-      .select("cancel_token")
-      .eq("id", result.id)
-      .single();
-    return { success: true, cancelToken: (data as { cancel_token?: string } | null)?.cancel_token };
-  } catch {
-    return { success: true };
-  }
+  return { success: !!result };
 }
 
-// ── send confirmation email ────────────────────────────────────────────────────
-async function sendConfirmationEmail(state: BookingState, total: number, cancelToken?: string) {
-  try {
-    await supabase.functions.invoke("send-confirmation", {
-      body: {
-        customerName: state.customer.name,
-        customerEmail: state.customer.email,
-        customerPhone: state.customer.phone || undefined,
-        serviceType: state.serviceType,
-        scheduleDate: state.selectedDate ? format(state.selectedDate, "MMMM d, yyyy") : null,
-        timeWindow: state.selectedTimeWindow?.label,
-        items: state.cart.map((c) => ({ name: c.item.name, quantity: c.quantity, price: c.item.price })),
-        total,
-        reference: state.paymentId,
-        cancelToken,
-      },
-    });
-  } catch (e) {
-    console.warn("[Email] Confirmation send failed (non-blocking):", e);
-  }
-}
+// NOTE: The confirmation email is sent SERVER-SIDE by the stripe-webhook edge
+// function when Stripe confirms the payment. The browser never triggers emails.
 
 // ── success screen ─────────────────────────────────────────────────────────────
 function SuccessScreen() {
@@ -394,7 +363,7 @@ export function StepPayment() {
     setPaymentId(paymentId);
     setPaymentStatus("processing");
 
-    const { success, cancelToken } = await saveBooking(
+    const { success } = await saveBooking(
       state, paymentId, itemTotal, photoPromoDiscount,
       adjustedItemTotal, total, displayAmount, zipPricing.minimumPrice,
       config.deposit_mode, {
@@ -416,8 +385,8 @@ export function StepPayment() {
       });
     }
 
-    // Webhook delivery is handled server-side by the DB trigger on bookings INSERT
-    await sendConfirmationEmail({ ...state, paymentId }, displayAmount, cancelToken);
+    // Email + outbound webhooks are handled server-side by stripe-webhook;
+    // the reconciliation cron is the safety net if anything is missed.
 
     trackEvent("booking_confirmed", {
       transaction_id: paymentId,

@@ -2,11 +2,12 @@ import { cn } from "@/lib/utils";
 import {
   Package, Webhook, MapPinned, Image as ImageIcon,
   CalendarX, Palette, ClipboardList, KeyRound,
-  Clock, Layers, Rocket, BarChart3, Puzzle, CreditCard,
+  Clock, Layers, Rocket, BarChart3, Puzzle, CreditCard, Activity,
 } from "lucide-react";
 
 export type AdminSection =
   | "bookings"
+  | "events"
   | "catalog"
   | "zip-pricing"
   | "branding"
@@ -31,6 +32,7 @@ const groups: { label: string; items: { id: AdminSection; label: string; icon: R
     label: "Operations",
     items: [
       { id: "bookings",      label: "Bookings",      icon: ClipboardList },
+      { id: "events",        label: "Events",         icon: Activity },
       { id: "catalog",       label: "Catalog",        icon: Package },
       { id: "zip-pricing",   label: "ZIP Pricing",    icon: MapPinned },
       { id: "dates",         label: "Date Blocking",  icon: CalendarX },

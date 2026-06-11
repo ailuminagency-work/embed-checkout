@@ -18,9 +18,11 @@ import { OnboardingTab } from "@/components/admin/OnboardingTab";
 import { TrackingManager } from "@/components/admin/TrackingManager";
 import { AddonsManager } from "@/components/admin/AddonsManager";
 import { PaymentsManager } from "@/components/admin/PaymentsManager";
+import { EventsFeed } from "@/components/admin/EventsFeed";
 
 const sectionTitles: Record<AdminSection, string> = {
   bookings:       "Bookings",
+  events:         "Events",
   catalog:        "Catalog",
   "zip-pricing":  "ZIP Pricing",
   branding:       "Images",
@@ -69,6 +71,7 @@ export default function Admin() {
         <AdminSidebar active={section} onSelect={setSection} />
         <main className="flex-1 max-w-5xl p-6">
           {section === "bookings"      && <BookingsManager />}
+          {section === "events"        && <EventsFeed />}
           {section === "catalog"       && <CatalogManager />}
           {section === "zip-pricing"   && <ZipPricingManager />}
           {section === "dates"         && <DateBlockingManager />}

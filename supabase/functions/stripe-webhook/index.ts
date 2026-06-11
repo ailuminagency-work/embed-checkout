@@ -89,6 +89,18 @@ async function sendConfirmation(bookingId: string) {
   }
 }
 
+// QuickBooks Sales Receipt — optional add-on, best-effort, non-blocking.
+// create-qbo-receipt skips silently if QuickBooks isn't connected.
+async function createQBOReceipt(bookingId: string) {
+  try {
+    await supabase.functions.invoke("create-qbo-receipt", {
+      body: { booking_id: bookingId },
+    });
+  } catch {
+    // failure logged inside create-qbo-receipt — booking unaffected
+  }
+}
+
 Deno.serve(async (req: Request) => {
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
@@ -180,6 +192,7 @@ Deno.serve(async (req: Request) => {
         payment_intent_id: pi.id, amount_cents: pi.amount, path: "browser",
       });
       await sendConfirmation(existingBooking.id);
+      await createQBOReceipt(existingBooking.id);
 
       const { data: full } = await supabase.from("bookings").select("*").eq("id", existingBooking.id).single();
       if (full) await fireOutboundWebhook(existingBooking.id, full);
@@ -238,6 +251,7 @@ Deno.serve(async (req: Request) => {
             payment_intent_id: pi.id, amount_cents: pi.amount, path: "crash_recovery",
           });
           await sendConfirmation(inserted.id);
+          await createQBOReceipt(inserted.id);
 
           const { data: full } = await supabase.from("bookings").select("*").eq("id", inserted.id).single();
           if (full) await fireOutboundWebhook(inserted.id, full);

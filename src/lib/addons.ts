@@ -95,6 +95,19 @@ export const ADDON_REGISTRY: Addon[] = [
     status: "inactive",
   },
   {
+    id: "quickbooks",
+    name: "QuickBooks Online",
+    description: "Automatically create a Sales Receipt in QuickBooks when a booking is confirmed. Keeps your books in sync with zero manual entry.",
+    category: "operations",
+    icon: "BookOpen",
+    // Connection state lives in app_settings.quickbooks_connected — set by the
+    // OAuth flow. Tokens are stored in integration_secrets (admin-only), never
+    // in publicly-readable app_settings.
+    requiredKeys: ["quickbooks_connected"],
+    docsUrl: "https://developer.intuit.com/app/developer/qbo/docs/get-started",
+    status: "inactive",
+  },
+  {
     id: "multilanguage",
     name: "Multi-Language",
     description: "Display the booking widget in Spanish and other languages.",

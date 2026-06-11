@@ -71,6 +71,8 @@ function deployFunctions(projectRef) {
     "reconcile-payments", "reconcile-bookings", "send-admin-alert",
     "deliver-webhook", "send-confirmation", "get-catalog", "v1",
     "send-sms", "send-reminder", "cancel-booking", "send-review-request",
+    "quickbooks-oauth-initiate", "quickbooks-oauth-callback",
+    "create-qbo-receipt", "quickbooks-token-refresh",
   ];
   for (const fn of fns) {
     process.stdout.write(`  Deploying ${fn}… `);

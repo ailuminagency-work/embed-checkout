@@ -138,6 +138,11 @@ Deno.serve(async (req: Request) => {
         body: { booking_id: bookingId, source: "reconciliation" },
       });
       if (emailRes?.sent) emailed++;
+
+      // QuickBooks sync — optional add-on, idempotent, skips if not connected
+      supabase.functions.invoke("create-qbo-receipt", {
+        body: { booking_id: bookingId },
+      }).catch(() => { /* logged inside create-qbo-receipt */ });
     } else if (pi.status === "canceled" || pi.status === "requires_payment_method") {
       // Payment failed or was abandoned — close out the pending booking.
       await supabase

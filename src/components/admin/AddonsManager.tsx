@@ -11,13 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import {
   MessageSquare, Bell, CalendarX, Star, Tag, UserCircle,
-  BarChart, TrendingUp, Globe, ExternalLink, ChevronDown, ChevronUp,
+  BarChart, TrendingUp, Globe, BookOpen, ExternalLink, ChevronDown, ChevronUp,
   Loader2, Plus, Trash2, CheckCircle2, XCircle,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   MessageSquare, Bell, CalendarX, Star, Tag, UserCircle,
-  BarChart, TrendingUp, Globe,
+  BarChart, TrendingUp, Globe, BookOpen,
 };
 
 const CATEGORY_LABELS: Record<AddonCategory, string> = {
@@ -145,6 +145,212 @@ function PromoCodesPanel() {
         </div>
       )}
     </div>
+  );
+}
+
+interface QBOLogRow {
+  id: string;
+  reference: string | null;
+  qbo_sales_receipt_id: string | null;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+}
+
+function QuickBooksCard({ addon, rawSettings, onSave }: {
+  addon: Addon;
+  rawSettings: Record<string, string>;
+  onSave: (updates: Record<string, string>) => Promise<void>;
+}) {
+  const { toast } = useToast();
+  const [expanded, setExpanded] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [keysLoaded, setKeysLoaded] = useState(false);
+  const [keysSaved, setKeysSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [logs, setLogs] = useState<QBOLogRow[]>([]);
+
+  const isConnected = rawSettings.quickbooks_connected === "true";
+  const environment = rawSettings.quickbooks_environment || "sandbox";
+  const realmId = rawSettings.quickbooks_realm_id || "";
+
+  // Credentials live in integration_secrets (admin-only RLS), not app_settings.
+  useEffect(() => {
+    if (!expanded || keysLoaded) return;
+    (async () => {
+      const { data } = await supabase
+        .from("integration_secrets")
+        .select("key, value")
+        .in("key", ["quickbooks_client_id", "quickbooks_client_secret"]);
+      const map = Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value ?? ""]));
+      setClientId(map.quickbooks_client_id ?? "");
+      setClientSecret(map.quickbooks_client_secret ?? "");
+      setKeysSaved(!!map.quickbooks_client_id && !!map.quickbooks_client_secret);
+      setKeysLoaded(true);
+      if (isConnected) {
+        const { data: logRows } = await supabase
+          .from("quickbooks_log")
+          .select("id, reference, qbo_sales_receipt_id, status, error_message, created_at")
+          .order("created_at", { ascending: false })
+          .limit(5);
+        setLogs((logRows ?? []) as QBOLogRow[]);
+      }
+    })();
+  }, [expanded, keysLoaded, isConnected]);
+
+  const handleSaveKeys = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("integration_secrets").upsert([
+      { key: "quickbooks_client_id", value: clientId.trim() },
+      { key: "quickbooks_client_secret", value: clientSecret.trim() },
+    ], { onConflict: "key" });
+    setSaving(false);
+    if (error) {
+      toast({ variant: "destructive", title: "Save failed", description: error.message });
+    } else {
+      setKeysSaved(!!clientId.trim() && !!clientSecret.trim());
+      toast({ title: "QuickBooks keys saved" });
+    }
+  };
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    const { data, error } = await supabase.functions.invoke("quickbooks-oauth-initiate");
+    setConnecting(false);
+    if (error || !data?.auth_url) {
+      toast({ variant: "destructive", title: "Could not start connection", description: error?.message ?? data?.error ?? "Save your keys first." });
+      return;
+    }
+    window.open(data.auth_url, "_blank", "noopener");
+    toast({ title: "Authorize in the new tab", description: "After approving in QuickBooks, come back and refresh this page." });
+  };
+
+  const handleDisconnect = async () => {
+    setSaving(true);
+    await supabase.from("integration_secrets").upsert([
+      { key: "quickbooks_access_token", value: "" },
+      { key: "quickbooks_refresh_token", value: "" },
+      { key: "quickbooks_token_expires_at", value: "" },
+    ], { onConflict: "key" });
+    await onSave({ quickbooks_connected: "", quickbooks_realm_id: "" });
+    setSaving(false);
+    toast({ title: "QuickBooks disconnected" });
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <BookOpen className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-sm">{addon.name}</CardTitle>
+                <Badge variant={isConnected ? "default" : "secondary"} className="text-xs">
+                  {isConnected ? "Connected" : "Not Connected"}
+                </Badge>
+                {isConnected && environment === "sandbox" && (
+                  <Badge variant="outline" className="text-xs">Sandbox</Badge>
+                )}
+              </div>
+              <CardDescription className="mt-0.5 text-xs leading-relaxed">{addon.description}</CardDescription>
+            </div>
+          </div>
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            className="shrink-0 mt-0.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </div>
+      </CardHeader>
+
+      {expanded && (
+        <CardContent className="pt-0 space-y-4">
+          {!isConnected ? (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Client ID</Label>
+                  <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="From developer.intuit.com" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Client Secret</Label>
+                  <Input type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder="••••••••" className="mt-1" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <a href={addon.docsUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                  Setup Guide <ExternalLink className="h-3 w-3" />
+                </a>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleSaveKeys} disabled={saving || !clientId || !clientSecret}>
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save Keys"}
+                  </Button>
+                  <Button size="sm" onClick={handleConnect} disabled={connecting || !keysSaved}>
+                    {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>Connect QuickBooks <ExternalLink className="h-3 w-3 ml-1" /></>}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+                In your Intuit app settings, add this Redirect URI:{" "}
+                <code className="font-mono break-all">{`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quickbooks-oauth-callback`}</code>
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Company ID</span>
+                  <span className="font-mono text-xs">{realmId}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Environment</span>
+                  <select
+                    value={environment}
+                    onChange={(e) => onSave({ quickbooks_environment: e.target.value })}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="sandbox">Sandbox</option>
+                    <option value="production">Production</option>
+                  </select>
+                </div>
+              </div>
+
+              {logs.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t border-border">
+                  <p className="text-xs font-medium text-foreground">Recent syncs</p>
+                  {logs.map((l) => (
+                    <div key={l.id} className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5">
+                        {l.status === "success"
+                          ? <CheckCircle2 className="h-3 w-3 text-success" />
+                          : <XCircle className="h-3 w-3 text-destructive" />}
+                        <span className="font-mono">{(l.reference ?? "—").slice(0, 18)}</span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        {l.status === "success" ? `Receipt #${l.qbo_sales_receipt_id}` : (l.error_message ?? "failed").slice(0, 40)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-end pt-1">
+                <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={saving}>
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Trash2 className="h-3.5 w-3.5 mr-1.5" />Disconnect</>}
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      )}
+    </Card>
   );
 }
 
@@ -343,14 +549,23 @@ export function AddonsManager() {
               {CATEGORY_LABELS[category]}
             </h3>
             <div className="space-y-3">
-              {items.map((addon) => (
-                <AddonCard
-                  key={addon.id}
-                  addon={addon}
-                  rawSettings={rawSettings}
-                  onSave={handleSave}
-                />
-              ))}
+              {items.map((addon) =>
+                addon.id === "quickbooks" ? (
+                  <QuickBooksCard
+                    key={addon.id}
+                    addon={addon}
+                    rawSettings={rawSettings}
+                    onSave={handleSave}
+                  />
+                ) : (
+                  <AddonCard
+                    key={addon.id}
+                    addon={addon}
+                    rawSettings={rawSettings}
+                    onSave={handleSave}
+                  />
+                ),
+              )}
             </div>
           </div>
         );

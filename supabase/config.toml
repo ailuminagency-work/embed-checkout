@@ -2,3 +2,13 @@ project_id = "bwzbqmverxkfxnetyhsy"
 
 [functions.get-catalog]
 verify_jwt = false
+
+# Stripe calls this with its own signature header, not a Supabase JWT.
+# Authenticity is enforced by HMAC signature verification inside the function.
+[functions.stripe-webhook]
+verify_jwt = false
+
+# Intuit redirects the admin's browser here after OAuth — no JWT possible.
+# Authenticity is enforced by the CSRF state check inside the function.
+[functions.quickbooks-oauth-callback]
+verify_jwt = false

@@ -22,18 +22,20 @@ interface BusinessConfig {
   primary_color: string;
   site_url: string;
   addon_cancellation_flow_enabled: string;
+  admin_notification_email: string;
 }
 
 async function getBusinessConfig(): Promise<BusinessConfig> {
   const { data } = await supabase.from("app_settings").select("key, value");
   const map = Object.fromEntries((data ?? []).map((r: { key: string; value: string | null }) => [r.key, r.value ?? ""]));
   return {
-    company_name: map.company_name || "Your Service Company",
+    company_name: map.business_name || map.company_name || "Your Service Company",
     contact_email: map.contact_email || "",
     currency_symbol: map.currency_symbol || "$",
     primary_color: map.primary_color || "#0d9488",
     site_url: map.site_url || "",
     addon_cancellation_flow_enabled: map.addon_cancellation_flow_enabled || "false",
+    admin_notification_email: map.admin_notification_email || "",
   };
 }
 
@@ -257,6 +259,28 @@ Deno.serve(async (req) => {
       provider: result.provider ?? null,
       error: result.error ?? null,
     }, source);
+
+    // Admin new-booking alert — non-blocking, only if the owner set an address.
+    const adminEmail = (await getBusinessConfig()).admin_notification_email;
+    if (result.ok && adminEmail) {
+      const sym = cfg.currency_symbol;
+      const amt = booking.amount_charged != null ? Number(booking.amount_charged) : Number(booking.final_total ?? 0);
+      const row = (label: string, val: unknown) =>
+        `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;">${label}</td><td style="padding:6px 0;font-weight:600;color:#111827;">${val ?? "—"}</td></tr>`;
+      const adminHtml = `<div style="font-family:-apple-system,sans-serif;padding:24px;max-width:560px;">
+        <h2 style="margin:0 0 16px;color:#111827;">New booking — ${booking.reference}</h2>
+        <table style="border-collapse:collapse;width:100%;font-size:14px;">
+          ${row("Customer", booking.customer_name)}
+          ${row("Email", booking.customer_email)}
+          ${row("Phone", booking.customer_phone)}
+          ${row("Service", booking.service_type)}
+          ${row("Date", `${booking.schedule_date ?? ""} ${booking.schedule_time_window ?? ""}`)}
+          ${row("Address", [booking.customer_address, booking.customer_zip].filter(Boolean).join(", "))}
+          ${row("Amount", `${sym}${amt.toFixed(2)}`)}
+        </table></div>`;
+      const adminRes = await sendEmail(adminEmail, `New Booking — ${booking.customer_name ?? "Customer"} · ${booking.schedule_date ?? ""}`, adminHtml);
+      await logEvent(booking_id, adminRes.ok ? "admin_alert.sent" : "admin_alert.failed", { to: adminEmail, error: adminRes.error ?? null }, source);
+    }
 
     // SMS confirmation — non-blocking, skips silently if Twilio not configured
     if (result.ok && booking.customer_phone) {

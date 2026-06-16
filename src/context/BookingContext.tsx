@@ -232,6 +232,13 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   useEffect(() => {
+    // Service-area restrictions disabled → accept any location, no minimum, no lookup.
+    if (!config.enable_zip_restrictions) {
+      setZipLookupLoading(false);
+      setZipPricing({ zipCode: normalizeZip(state.customer.zip), minimumPrice: null, status: "resolved", message: null });
+      return;
+    }
+
     const zipCode = normalizeZip(state.customer.zip);
 
     if (!zipCode) {
@@ -289,7 +296,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [state.customer.zip, config.zip_code_pattern]);
+  }, [state.customer.zip, config.zip_code_pattern, config.enable_zip_restrictions]);
 
   const categories = useMemo(() => [...new Set(catalog.map((item) => item.category))], [catalog]);
 

@@ -2,10 +2,11 @@ import { cn } from "@/lib/utils";
 import {
   Package, Webhook, MapPinned, Image as ImageIcon,
   CalendarX, Palette, ClipboardList, KeyRound,
-  Clock, Layers, Rocket, BarChart3, Puzzle, CreditCard, Activity,
+  Clock, Layers, Rocket, BarChart3, Puzzle, CreditCard, Activity, Wand2,
 } from "lucide-react";
 
 export type AdminSection =
+  | "setup"
   | "bookings"
   | "events"
   | "catalog"
@@ -28,6 +29,12 @@ interface AdminSidebarProps {
 }
 
 const groups: { label: string; items: { id: AdminSection; label: string; icon: React.ElementType }[] }[] = [
+  {
+    label: "Get Started",
+    items: [
+      { id: "setup", label: "Setup Wizard", icon: Wand2 },
+    ],
+  },
   {
     label: "Operations",
     items: [
@@ -55,7 +62,7 @@ const groups: { label: string; items: { id: AdminSection; label: string; icon: R
       { id: "api-keys",    label: "API Keys",    icon: KeyRound },
       { id: "tracking",    label: "Analytics",   icon: BarChart3 },
       { id: "addons",      label: "Add-ons",     icon: Puzzle },
-      { id: "onboarding",  label: "Setup",       icon: Rocket },
+      { id: "onboarding",  label: "Health Check", icon: Rocket },
     ],
   },
 ];

@@ -19,8 +19,10 @@ import { TrackingManager } from "@/components/admin/TrackingManager";
 import { AddonsManager } from "@/components/admin/AddonsManager";
 import { PaymentsManager } from "@/components/admin/PaymentsManager";
 import { EventsFeed } from "@/components/admin/EventsFeed";
+import { SetupWizard } from "@/components/admin/setup/SetupWizard";
 
 const sectionTitles: Record<AdminSection, string> = {
+  setup:          "Setup",
   bookings:       "Bookings",
   events:         "Events",
   catalog:        "Catalog",
@@ -70,6 +72,7 @@ export default function Admin() {
       <div className="flex">
         <AdminSidebar active={section} onSelect={setSection} />
         <main className="flex-1 max-w-5xl p-6">
+          {section === "setup"         && <SetupWizard />}
           {section === "bookings"      && <BookingsManager />}
           {section === "events"        && <EventsFeed />}
           {section === "catalog"       && <CatalogManager />}

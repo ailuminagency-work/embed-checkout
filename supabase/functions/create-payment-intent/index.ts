@@ -133,8 +133,10 @@ Deno.serve(async (req: Request) => {
         : 0;
     const adjustedItemTotal = Math.max(itemTotal - photoDiscount, 0);
 
+    // Service-area minimum only applies when ZIP restrictions are enabled.
+    const enableZipRestrictions = config.enable_zip_restrictions !== "false";
     let minimumPrice: number | null = null;
-    if (zip_code) {
+    if (enableZipRestrictions && zip_code) {
       const { data: zipRow } = await supabase
         .from("zip_pricing")
         .select("minimum_price")

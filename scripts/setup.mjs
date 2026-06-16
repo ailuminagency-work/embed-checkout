@@ -73,6 +73,7 @@ function deployFunctions(projectRef) {
     "send-sms", "send-reminder", "cancel-booking", "send-review-request",
     "quickbooks-oauth-initiate", "quickbooks-oauth-callback",
     "create-qbo-receipt", "quickbooks-token-refresh",
+    "setup-stripe", "setup-email",
   ];
   for (const fn of fns) {
     process.stdout.write(`  Deploying ${fn}… `);

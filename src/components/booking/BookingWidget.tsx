@@ -12,8 +12,9 @@ import { imgStyle } from "@/lib/imageSettings";
 
 function WidgetInner() {
   const booking = useBooking();
-  const { state, appImages } = booking;
+  const { state, appImages, config } = booking;
   const widgetBg = appImages.widget_background;
+  const showHeader = !state.completed && (config.show_logo && config.logo_url ? true : !!config.widget_title);
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden relative">
@@ -30,6 +31,14 @@ function WidgetInner() {
       )}
 
       <div className="relative z-10 flex flex-col h-full overflow-hidden">
+        {showHeader && (
+          <div className="shrink-0 flex items-center gap-2.5 px-4 md:px-6 pt-4 pb-1">
+            {config.show_logo && config.logo_url && (
+              <img src={config.logo_url} alt={config.business_name} className="h-7 w-auto object-contain" />
+            )}
+            <span className="font-bold text-base text-foreground">{config.widget_title}</span>
+          </div>
+        )}
         {!state.completed && <StepIndicator />}
 
         <div className="flex-1 flex overflow-hidden min-h-0">

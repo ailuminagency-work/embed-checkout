@@ -8,10 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 export interface AppConfig {
   // ── Branding ───────────────────────────────────────────────────────────────
   company_name: string;
+  business_name: string;
+  widget_title: string;
+  show_logo: boolean;
   logo_url: string | null;
   contact_email: string;
+  admin_notification_email: string;
   primary_color: string;
   border_radius: string;
+
+  // ── Service area ───────────────────────────────────────────────────────────
+  enable_zip_restrictions: boolean;
+  out_of_area_behavior: "block" | "allow";
 
   // ── Business rules ─────────────────────────────────────────────────────────
   currency: string;
@@ -55,10 +63,16 @@ export interface AppConfig {
 
 export const CONFIG_DEFAULTS: AppConfig = {
   company_name: "My Business",
+  business_name: "My Business",
+  widget_title: "Book a Pickup",
+  show_logo: true,
   logo_url: null,
   contact_email: "",
+  admin_notification_email: "",
   primary_color: "#0d9488",
   border_radius: "0.625",
+  enable_zip_restrictions: true,
+  out_of_area_behavior: "block",
   currency: "USD",
   currency_symbol: "$",
   deposit_mode: false,
@@ -105,12 +119,20 @@ function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
   let pattern = CONFIG_DEFAULTS.zip_code_pattern;
   try { pattern = new RegExp(patternRaw); } catch { /* keep default */ }
 
+  const businessName = map.business_name || map.company_name || CONFIG_DEFAULTS.company_name;
+
   return {
     company_name: map.company_name ?? CONFIG_DEFAULTS.company_name,
+    business_name: businessName,
+    widget_title: map.widget_title || businessName,
+    show_logo: map.show_logo !== "false",
     logo_url: map.company_logo_url ?? map.logo_url ?? null,
     contact_email: map.contact_email ?? "",
+    admin_notification_email: map.admin_notification_email ?? "",
     primary_color: map.primary_color ?? CONFIG_DEFAULTS.primary_color,
     border_radius: map.border_radius ?? CONFIG_DEFAULTS.border_radius,
+    enable_zip_restrictions: map.enable_zip_restrictions !== "false",
+    out_of_area_behavior: (map.out_of_area_behavior === "allow" ? "allow" : "block") as "block" | "allow",
     currency: map.currency ?? CONFIG_DEFAULTS.currency,
     currency_symbol: map.currency_symbol ?? CONFIG_DEFAULTS.currency_symbol,
     deposit_mode: map.deposit_mode === "true",

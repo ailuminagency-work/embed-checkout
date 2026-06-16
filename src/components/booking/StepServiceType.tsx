@@ -46,6 +46,7 @@ export function StepServiceType() {
       });
   }, []);
 
+  const zipRestricted = config.enable_zip_restrictions;
   const zipReady = zipPricing.status === "resolved";
   const zipBlocked = !!state.customer.zip && !zipReady;
 
@@ -55,7 +56,7 @@ export function StepServiceType() {
   const zipMessage = zipLookupLoading
     ? "Checking your area..."
     : zipReady
-      ? `Area minimum: ${sym}${zipPricing.minimumPrice}`
+      ? (zipPricing.minimumPrice != null ? `Area minimum: ${sym}${zipPricing.minimumPrice}` : "")
       : zipPricing.status === "unmapped"
         ? `We service your area! Contact us for a custom quote${contactEmail ? `: ${contactEmail}` : "."}`
         : "Enter your ZIP code to check availability in your area.";
@@ -70,21 +71,25 @@ export function StepServiceType() {
       <h2 className="text-xl font-bold text-foreground mb-1">What do you need?</h2>
       <p className="text-sm text-muted-foreground mb-6">Choose the service that fits your needs.</p>
 
-      <div className="mb-6 rounded-xl border border-border bg-card p-4">
-        <Label htmlFor="service-zip" className="text-xs font-medium text-foreground">ZIP Code *</Label>
-        <Input
-          id="service-zip"
-          value={state.customer.zip}
-          onChange={(e) => updateCustomer({ zip: e.target.value })}
-          placeholder="90210"
-          className="mt-2 bg-background"
-          inputMode="numeric"
-          maxLength={10}
-        />
-        <p className={`mt-2 text-xs ${zipBlocked ? "text-destructive" : "text-muted-foreground"}`}>
-          {zipMessage}
-        </p>
-      </div>
+      {zipRestricted && (
+        <div className="mb-6 rounded-xl border border-border bg-card p-4">
+          <Label htmlFor="service-zip" className="text-xs font-medium text-foreground">ZIP Code *</Label>
+          <Input
+            id="service-zip"
+            value={state.customer.zip}
+            onChange={(e) => updateCustomer({ zip: e.target.value })}
+            placeholder="90210"
+            className="mt-2 bg-background"
+            inputMode="numeric"
+            maxLength={10}
+          />
+          {zipMessage && (
+            <p className={`mt-2 text-xs ${zipBlocked ? "text-destructive" : "text-muted-foreground"}`}>
+              {zipMessage}
+            </p>
+          )}
+        </div>
+      )}
 
       {loadingTypes ? (
         <div className="flex justify-center py-8">

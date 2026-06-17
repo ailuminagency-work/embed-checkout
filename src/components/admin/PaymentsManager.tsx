@@ -30,14 +30,13 @@ interface Settings {
   stripe_publishable_key_live: string;
   deposit_mode: string;
   deposit_percentage: string;
-  refund_window_hours: string;
   terms_version: string;
   receipt_email_enabled: string;
 }
 
 const SETTING_KEYS = [
   "stripe_mode", "stripe_publishable_key_test", "stripe_publishable_key_live",
-  "deposit_mode", "deposit_percentage", "refund_window_hours",
+  "deposit_mode", "deposit_percentage",
   "terms_version", "receipt_email_enabled",
 ] as const;
 
@@ -49,7 +48,6 @@ function fmt(cents: number | null, currency = "usd") {
 function EventTypeBadge({ type }: { type: string }) {
   if (type === "payment_succeeded") return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100">Succeeded</Badge>;
   if (type === "payment_failed")    return <Badge variant="destructive">Failed</Badge>;
-  if (type === "refunded")          return <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">Refunded</Badge>;
   return <Badge variant="secondary">{type}</Badge>;
 }
 
@@ -61,7 +59,6 @@ export function PaymentsManager() {
     stripe_publishable_key_live: "",
     deposit_mode: "false",
     deposit_percentage: "25",
-    refund_window_hours: "24",
     terms_version: "1.0",
     receipt_email_enabled: "true",
   });
@@ -228,31 +225,6 @@ export function PaymentsManager() {
             </p>
           </CardContent>
         )}
-      </Card>
-
-      {/* Refund Policy */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Cancellation & Refund Policy</CardTitle>
-          <CardDescription>Customers can self-cancel and receive an automatic refund within this window.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="space-y-1.5 flex-1">
-              <Label className="text-xs text-muted-foreground">Cancellation window (hours before pickup)</Label>
-              <Input
-                type="number"
-                min="1"
-                value={settings.refund_window_hours}
-                onChange={(e) => set("refund_window_hours", e.target.value)}
-                className="w-32"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
-            Customers can cancel and receive a full refund if they cancel at least {settings.refund_window_hours} hours before their pickup.
-          </p>
-        </CardContent>
       </Card>
 
       {/* Terms version */}

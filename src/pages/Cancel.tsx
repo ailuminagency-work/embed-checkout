@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Clock, Loader2, CalendarX } from "lucide-react";
 
-type CancelState = "loading" | "confirm" | "success" | "refunded" | "out_of_window" | "already_cancelled" | "error";
+type CancelState = "loading" | "confirm" | "success" | "out_of_window" | "already_cancelled" | "error";
 
 export default function Cancel() {
   const [params] = useSearchParams();
@@ -28,7 +28,7 @@ export default function Cancel() {
         setMessage(data.message ?? "Cancellation window has passed.");
         setState("out_of_window");
       } else if (data?.cancelled) {
-        setState(data.refunded ? "refunded" : "success");
+        setState("success");
       } else {
         throw new Error("Unexpected response from server.");
       }
@@ -55,7 +55,7 @@ export default function Cancel() {
       <Page>
         <CalendarX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <h1 className="text-xl font-bold text-foreground mb-2">Cancel your booking?</h1>
-        <p className="text-sm text-muted-foreground mb-6">This action cannot be undone. Your refund eligibility depends on our cancellation policy.</p>
+        <p className="text-sm text-muted-foreground mb-6">This action cannot be undone.</p>
         <Button onClick={handleCancel} disabled={processing} variant="destructive" className="w-full">
           {processing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : "Yes, cancel my booking"}
         </Button>
@@ -71,17 +71,7 @@ export default function Cancel() {
       <Page>
         <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-4" />
         <h1 className="text-xl font-bold text-foreground mb-2">Booking Cancelled</h1>
-        <p className="text-sm text-muted-foreground">Your booking has been cancelled. Please check our cancellation policy for refund details.</p>
-      </Page>
-    );
-  }
-
-  if (state === "refunded") {
-    return (
-      <Page>
-        <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-4" />
-        <h1 className="text-xl font-bold text-foreground mb-2">Booking Cancelled & Refunded</h1>
-        <p className="text-sm text-muted-foreground">Your booking has been cancelled and a refund has been initiated. It may take 5–10 business days to appear.</p>
+        <p className="text-sm text-muted-foreground">Your booking has been cancelled. If you've paid, our team will be in touch regarding any refund.</p>
       </Page>
     );
   }

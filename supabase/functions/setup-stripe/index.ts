@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
     }
     const webhook = await stripe.webhookEndpoints.create({
       url: webhookUrl,
-      enabled_events: ["payment_intent.succeeded", "payment_intent.payment_failed", "charge.refunded"],
-      description: "Booking widget — confirmation, failure, refund handling",
+      enabled_events: ["payment_intent.succeeded", "payment_intent.payment_failed"],
+      description: "Booking widget — confirmation & failure handling",
     });
     const webhookSecret = webhook.secret!;
 

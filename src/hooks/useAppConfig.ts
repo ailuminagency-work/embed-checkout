@@ -37,7 +37,6 @@ export interface AppConfig {
   stripe_publishable_key_live: string | null;
   terms_version: string;
   receipt_email_enabled: boolean;
-  refund_window_hours: number;
 
   // ── Webhooks ───────────────────────────────────────────────────────────────
   webhook_mode: "test" | "live";
@@ -86,7 +85,6 @@ export const CONFIG_DEFAULTS: AppConfig = {
   stripe_publishable_key_live: null,
   terms_version: "1.0",
   receipt_email_enabled: true,
-  refund_window_hours: 24,
   webhook_mode: "test",
   make_webhook_url_test: "",
   make_webhook_url_live: "",
@@ -146,7 +144,6 @@ function parseRows(rows: { key: string; value: string | null }[]): AppConfig {
     stripe_publishable_key_live: map.stripe_publishable_key_live ?? null,
     terms_version: map.terms_version ?? "1.0",
     receipt_email_enabled: map.receipt_email_enabled !== "false",
-    refund_window_hours: Number(map.refund_window_hours ?? 24),
     webhook_mode: (map.webhook_mode === "live" ? "live" : "test") as "test" | "live",
     make_webhook_url_test: map.make_webhook_url_test ?? "",
     make_webhook_url_live: map.make_webhook_url_live ?? "",

@@ -1,6 +1,7 @@
 // Self-serve booking cancellation.
-// Accepts a cancel_token, verifies policy window, cancels booking + Stripe refund.
-// Silently skips if addon_cancellation_flow_enabled != 'true'.
+// Accepts a cancel_token, verifies policy window, marks the booking cancelled.
+// Refunds are NOT issued here — the business owner handles refunds in the
+// Stripe Dashboard. Silently skips if addon_cancellation_flow_enabled != 'true'.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, corsResponse, json, error as jsonError } from "../_shared/cors.ts";
@@ -58,27 +59,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Attempt Stripe refund if a payment was charged
-    let refunded = false;
-    if (booking.payment_id && booking.payment_id.startsWith("pi_")) {
-      const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY");
-      if (STRIPE_SECRET_KEY) {
-        try {
-          const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
-            method: "POST",
-            headers: {
-              Authorization: `Basic ${btoa(STRIPE_SECRET_KEY + ":")}`,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({ payment_intent: booking.payment_id }),
-          });
-          refunded = refundRes.ok;
-        } catch (e) {
-          console.warn("[cancel-booking] Stripe refund failed:", e);
-        }
-      }
-    }
-
     await supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
 
     // Fire cancellation webhook (best-effort)
@@ -90,7 +70,7 @@ Deno.serve(async (req) => {
       // non-blocking
     }
 
-    return json({ cancelled: true, refunded });
+    return json({ cancelled: true });
   } catch (e) {
     console.error("[cancel-booking]", e);
     return jsonError("Internal error", 500);

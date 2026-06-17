@@ -296,38 +296,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── charge.refunded ───────────────────────────────────────────────────────
-  if (event.type === "charge.refunded") {
-    const charge = event.data.object as Stripe.Charge;
-    const refund = charge.refunds?.data?.[0];
-
-    const { data: refundedBooking } = await supabase
-      .from("bookings")
-      .update({
-        status: "cancelled",
-        refund_id: refund?.id ?? null,
-        refunded_at: new Date().toISOString(),
-        refund_amount_cents: refund?.amount ?? charge.amount_refunded,
-      })
-      .eq("payment_intent_id", charge.payment_intent as string)
-      .select("id")
-      .maybeSingle();
-
-    await supabase.from("payment_events").insert({
-      payment_intent_id: charge.payment_intent as string,
-      stripe_event_id: event.id,
-      event_type: "refunded",
-      stripe_mode: stripeMode,
-      amount_cents: refund?.amount ?? charge.amount_refunded,
-      currency: charge.currency,
-    });
-
-    await logEvent(refundedBooking?.id ?? null, "booking.cancelled", {
-      payment_intent_id: charge.payment_intent,
-      refund_amount_cents: refund?.amount ?? charge.amount_refunded,
-      reason: "charge.refunded",
-    });
-  }
+  // Refunds are handled entirely in the Stripe Dashboard — no refund handling here.
 
   return new Response(JSON.stringify({ ok: true, event_type: event.type }), {
     status: 200, headers: { "Content-Type": "application/json" },

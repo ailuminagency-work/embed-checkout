@@ -67,7 +67,7 @@ function hasSupabaseCLI() {
 
 function deployFunctions(projectRef) {
   const fns = [
-    "create-payment-intent", "stripe-webhook", "refund-booking",
+    "create-payment-intent", "stripe-webhook",
     "reconcile-payments", "reconcile-bookings", "send-admin-alert",
     "deliver-webhook", "send-confirmation", "get-catalog", "v1",
     "send-sms", "send-reminder", "cancel-booking", "send-review-request",
@@ -163,7 +163,6 @@ const settings = [
   { key: "twin_webhook_url",      value: twinUrl.trim() },
   { key: "deposit_mode",                value: "false" },
   { key: "deposit_percentage",          value: "25" },
-  { key: "refund_window_hours",         value: "24" },
   { key: "terms_version",               value: "1.0" },
   { key: "receipt_email_enabled",       value: "true" },
   { key: "photo_promo_percent",         value: "5" },

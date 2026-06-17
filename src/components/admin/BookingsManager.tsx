@@ -112,9 +112,6 @@ function StatusBadge({ status }: { status: string }) {
   if (status === "cancelled") {
     return <Badge variant="destructive">Cancelled</Badge>;
   }
-  if (status === "refunded") {
-    return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">Refunded</Badge>;
-  }
   return <Badge variant="secondary">{status}</Badge>;
 }
 

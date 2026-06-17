@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import BookingWidget from "@/components/booking/BookingWidget";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // ── Read credentials from the script tag ─────────────────────────────────────
 const script = document.currentScript as HTMLScriptElement | null;
@@ -33,11 +34,13 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(container).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <BookingWidget />
-        <Toaster />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary label="widget">
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <BookingWidget />
+          <Toaster />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

@@ -12,6 +12,7 @@ import Terms from "./pages/Terms";
 import CancellationPolicy from "./pages/CancellationPolicy";
 import Cancel from "./pages/Cancel";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -22,16 +23,18 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/embed" element={<Embed />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/cancellation-policy" element={<CancellationPolicy />} />
-          <Route path="/cancel" element={<Cancel />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ErrorBoundary label="app">
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/embed" element={<Embed />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/cancellation-policy" element={<CancellationPolicy />} />
+            <Route path="/cancel" element={<Cancel />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
     </ThemeProvider>

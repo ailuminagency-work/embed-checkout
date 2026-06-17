@@ -12,3 +12,7 @@ verify_jwt = false
 # Authenticity is enforced by the CSRF state check inside the function.
 [functions.quickbooks-oauth-callback]
 verify_jwt = false
+
+# Public status endpoint — hit any time to see system health.
+[functions.health-monitor]
+verify_jwt = false

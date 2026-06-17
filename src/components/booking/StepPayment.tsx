@@ -278,6 +278,15 @@ export function StepPayment() {
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [offline, setOffline] = useState(typeof navigator !== "undefined" && !navigator.onLine);
+
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
 
   const stripeKey = config.stripe_publishable_key;
   const useStripeMode = !!stripeKey;
@@ -419,6 +428,11 @@ export function StepPayment() {
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
     >
+      {offline && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, marginBottom: 16, color: "#dc2626", fontWeight: 600, fontSize: 13, textAlign: "center" }}>
+          ⚠ No internet connection — please reconnect before paying
+        </div>
+      )}
       <h2 className="text-xl font-bold text-foreground mb-1">Review & Pay</h2>
       <p className="text-sm text-muted-foreground mb-6">
         {config.deposit_mode

@@ -20,6 +20,7 @@ import { AddonsManager } from "@/components/admin/AddonsManager";
 import { PaymentsManager } from "@/components/admin/PaymentsManager";
 import { EventsFeed } from "@/components/admin/EventsFeed";
 import { SetupWizard } from "@/components/admin/setup/SetupWizard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const sectionTitles: Record<AdminSection, string> = {
   setup:          "Setup",
@@ -72,22 +73,24 @@ export default function Admin() {
       <div className="flex">
         <AdminSidebar active={section} onSelect={setSection} />
         <main className="flex-1 max-w-5xl p-6">
-          {section === "setup"         && <SetupWizard />}
-          {section === "bookings"      && <BookingsManager />}
-          {section === "events"        && <EventsFeed />}
-          {section === "catalog"       && <CatalogManager />}
-          {section === "zip-pricing"   && <ZipPricingManager />}
-          {section === "dates"         && <DateBlockingManager />}
-          {section === "theme"         && <ThemeManager />}
-          {section === "branding"      && <BrandingManager />}
-          {section === "webhooks"      && <WebhooksManager />}
-          {section === "api-keys"      && <ApiKeysManager />}
-          {section === "time-windows"  && <TimeWindowManager />}
-          {section === "service-types" && <ServiceTypeManager />}
-          {section === "onboarding"    && <OnboardingTab />}
-          {section === "tracking"      && <TrackingManager />}
-          {section === "addons"        && <AddonsManager />}
-          {section === "payments"      && <PaymentsManager />}
+          <ErrorBoundary label={section} key={section}>
+            {section === "setup"         && <SetupWizard />}
+            {section === "bookings"      && <BookingsManager />}
+            {section === "events"        && <EventsFeed />}
+            {section === "catalog"       && <CatalogManager />}
+            {section === "zip-pricing"   && <ZipPricingManager />}
+            {section === "dates"         && <DateBlockingManager />}
+            {section === "theme"         && <ThemeManager />}
+            {section === "branding"      && <BrandingManager />}
+            {section === "webhooks"      && <WebhooksManager />}
+            {section === "api-keys"      && <ApiKeysManager />}
+            {section === "time-windows"  && <TimeWindowManager />}
+            {section === "service-types" && <ServiceTypeManager />}
+            {section === "onboarding"    && <OnboardingTab />}
+            {section === "tracking"      && <TrackingManager />}
+            {section === "addons"        && <AddonsManager />}
+            {section === "payments"      && <PaymentsManager />}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

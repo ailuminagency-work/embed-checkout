@@ -1,0 +1,13 @@
+# Netlify config for git-connected deploys (drag-drop uses public/_redirects instead).
+# One deploy of dist/ serves the whole app:
+#   admin portal  → https://<site>/admin
+#   booking widget → https://<site>/embed   (use this URL in the client's iframe)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback so deep links / refreshes on /admin and /embed don't 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
